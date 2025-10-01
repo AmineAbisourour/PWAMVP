@@ -294,3 +294,25 @@ export async function getAllTransactions(hoaId) {
   return [...contributionsWithType, ...expensesWithType]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
+
+// Delete all transactions (contributions + expenses) for a specific HOA
+export async function clearAllTransactions(hoaId) {
+  await Promise.all([
+    clearContributionsByHOA(hoaId),
+    clearExpensesByHOA(hoaId),
+  ]);
+}
+
+// ==========================================
+// APP RESET
+// ==========================================
+
+// Delete all data from all stores (complete app reset)
+export async function clearAllData() {
+  const db = await initDB();
+  await Promise.all([
+    db.clear(HOA_STORE),
+    db.clear(CONTRIBUTIONS_STORE),
+    db.clear(EXPENSES_STORE),
+  ]);
+}

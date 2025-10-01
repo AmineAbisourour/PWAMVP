@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { updateContribution, updateExpense } from '../db/database';
+import { updateContribution, updateExpense, deleteContribution, deleteExpense } from '../db/database';
 
 export function TransactionDetailModal({ transaction, onClose, onUpdate }) {
   const [paymentStatus, setPaymentStatus] = useState(transaction.paymentStatus || 'pending');
   const [receiptDelivered, setReceiptDelivered] = useState(transaction.receiptDelivered || false);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isContribution = transaction.transactionType === 'contribution';
 
@@ -43,6 +45,26 @@ export function TransactionDetailModal({ transaction, onClose, onUpdate }) {
       alert('Failed to update transaction. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+
+      if (isContribution) {
+        await deleteContribution(transaction.id);
+      } else {
+        await deleteExpense(transaction.id);
+      }
+
+      onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert('Failed to delete transaction. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -190,6 +212,48 @@ export function TransactionDetailModal({ transaction, onClose, onUpdate }) {
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
+          </div>
+
+          {/* Delete Button */}
+          <div className="pt-4 border-t border-gray-200 mt-4">
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full px-6 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 active:bg-red-200 transition-colors border border-red-200"
+              >
+                Delete Transaction
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-900">Are you sure?</p>
+                    <p className="text-xs text-red-700 mt-1">
+                      This will permanently delete this transaction. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                    className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

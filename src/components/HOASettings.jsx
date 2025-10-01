@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { updateHOA, getHOAById } from '../db/database';
+import { updateHOA, getHOAById, clearAllTransactions, clearAllData, getFinancialSummary } from '../db/database';
 
 export function HOASettings({ hoa, onUpdate }) {
   const [formData, setFormData] = useState({
@@ -12,6 +12,11 @@ export function HOASettings({ hoa, onUpdate }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showDeleteTransactionsConfirm, setShowDeleteTransactionsConfirm] = useState(false);
+  const [showResetAppConfirm, setShowResetAppConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [financialSummary, setFinancialSummary] = useState(null);
 
   // Load HOA data into form
   useEffect(() => {
@@ -24,6 +29,22 @@ export function HOASettings({ hoa, onUpdate }) {
       });
     }
   }, [hoa]);
+
+  // Load financial summary
+  useEffect(() => {
+    if (hoa) {
+      loadFinancialSummary();
+    }
+  }, [hoa]);
+
+  const loadFinancialSummary = async () => {
+    try {
+      const summary = await getFinancialSummary(hoa.id);
+      setFinancialSummary(summary);
+    } catch (error) {
+      console.error('Error loading financial summary:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -94,6 +115,34 @@ export function HOASettings({ hoa, onUpdate }) {
       } finally {
         setSaving(false);
       }
+    }
+  };
+
+  const handleDeleteAllTransactions = async () => {
+    try {
+      setDeleting(true);
+      await clearAllTransactions(hoa.id);
+      await loadFinancialSummary();
+      setShowDeleteTransactionsConfirm(false);
+      alert('All transactions have been deleted successfully.');
+    } catch (error) {
+      console.error('Error deleting transactions:', error);
+      alert('Failed to delete transactions. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleResetApp = async () => {
+    try {
+      setDeleting(true);
+      await clearAllData();
+      // Reload the page to reset the app state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error resetting app:', error);
+      alert('Failed to reset app. Please try again.');
+      setDeleting(false);
     }
   };
 
@@ -252,6 +301,168 @@ export function HOASettings({ hoa, onUpdate }) {
           </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border-2 border-red-200">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h2 className="text-2xl font-bold text-red-900">Danger Zone</h2>
+          </div>
+          <p className="text-red-700">
+            Destructive actions that cannot be undone. Proceed with caution.
+          </p>
+        </div>
+
+        {/* Delete All Transactions */}
+        <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-1">Delete All Transactions</h3>
+              <p className="text-sm text-red-700 mb-2">
+                Permanently delete all contributions and expenses. HOA settings will be preserved.
+              </p>
+              {financialSummary && (
+                <p className="text-xs text-red-600 font-semibold">
+                  {financialSummary.contributionCount} contributions + {financialSummary.expenseCount} expenses = {financialSummary.contributionCount + financialSummary.expenseCount} total transactions
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowDeleteTransactionsConfirm(true)}
+              disabled={!financialSummary || (financialSummary.contributionCount + financialSummary.expenseCount) === 0}
+              className="px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              Delete All Transactions
+            </button>
+          </div>
+        </div>
+
+        {/* Reset Entire App */}
+        <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-1">Reset Entire App</h3>
+              <p className="text-sm text-red-700">
+                Permanently delete ALL data including HOA settings, contributions, and expenses. This will reset the app to its initial state.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowResetAppConfirm(true)}
+              className="px-6 py-3 bg-red-700 text-white rounded-xl font-semibold hover:bg-red-800 active:bg-red-900 transition-colors shadow-lg hover:shadow-xl flex-shrink-0"
+            >
+              Reset App
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Transactions Confirmation Modal */}
+      {showDeleteTransactionsConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete All Transactions?</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  This will permanently delete all {financialSummary?.contributionCount + financialSummary?.expenseCount} transactions. This action cannot be undone.
+                </p>
+                <div className="mt-3 p-3 bg-red-50 rounded-lg">
+                  <p className="text-xs text-red-900 font-semibold">What will be deleted:</p>
+                  <ul className="text-xs text-red-700 mt-1 space-y-1">
+                    <li>• {financialSummary?.contributionCount} contribution records</li>
+                    <li>• {financialSummary?.expenseCount} expense records</li>
+                  </ul>
+                  <p className="text-xs text-red-900 font-semibold mt-2">What will be kept:</p>
+                  <ul className="text-xs text-red-700 mt-1">
+                    <li>• HOA settings and information</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteTransactionsConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAllTransactions}
+                disabled={deleting}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete All'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset App Confirmation Modal */}
+      {showResetAppConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Reset Entire App?</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  This will permanently delete ALL data and reset the app to its initial state. This action cannot be undone.
+                </p>
+                <div className="mt-3 p-3 bg-red-50 rounded-lg">
+                  <p className="text-xs text-red-900 font-semibold">Everything will be deleted:</p>
+                  <ul className="text-xs text-red-700 mt-1 space-y-1">
+                    <li>• HOA settings and information</li>
+                    <li>• All contribution records</li>
+                    <li>• All expense records</li>
+                    <li>• All financial data</li>
+                  </ul>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Type <span className="text-red-600 font-mono">DELETE</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full px-4 py-3 border border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowResetAppConfirm(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={deleting}
+                className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetApp}
+                disabled={deleting || deleteConfirmText !== 'DELETE'}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? 'Resetting...' : 'Reset App'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

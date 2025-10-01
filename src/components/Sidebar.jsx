@@ -20,13 +20,13 @@ export function Sidebar({ currentView, onNavigate, hoa, isOpen, onToggle }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 w-64 transform transition-transform duration-300 ease-in-out safe-area-inset
+        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 w-64 transform transition-transform duration-300 ease-in-out safe-area-inset flex flex-col
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:static md:z-auto
+          md:translate-x-0 md:static md:z-auto md:h-screen
         `}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-bold text-gray-800">HOA Manager</h2>
             <button
@@ -45,7 +45,7 @@ export function Sidebar({ currentView, onNavigate, hoa, isOpen, onToggle }) {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4">
+        <nav className="p-4 flex-1 overflow-y-auto">
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.id}>
@@ -76,7 +76,7 @@ export function Sidebar({ currentView, onNavigate, hoa, isOpen, onToggle }) {
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <div className="text-xs text-gray-500 text-center">
             HOA PWA v1.0
           </div>
