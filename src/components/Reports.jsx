@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getFinancialSummary, getAllTransactions } from '../db/database';
+import { getFinancialSummaryEnhanced, getAllTransactions } from '../db/database';
 
 export function Reports({ hoa }) {
   const [summary, setSummary] = useState(null);
@@ -13,8 +13,8 @@ export function Reports({ hoa }) {
   const loadReports = async () => {
     try {
       setLoading(true);
-      // Get financial summary
-      const financialSummary = await getFinancialSummary(hoa.id);
+      // Get enhanced financial summary with breakdown
+      const financialSummary = await getFinancialSummaryEnhanced(hoa.id);
       setSummary(financialSummary);
 
       // Get all transactions for monthly breakdown
@@ -95,7 +95,7 @@ export function Reports({ hoa }) {
             ${summary?.totalContributions?.toFixed(2) || '0.00'}
           </div>
           <div className="text-sm text-gray-500 mt-1">
-            {summary?.contributionCount || 0} transactions
+            {(summary?.regularContributionsCount || 0) + (summary?.specialAssessmentsCount || 0)} transactions
           </div>
         </div>
 
@@ -128,6 +128,138 @@ export function Reports({ hoa }) {
           </div>
           <div className="text-sm text-gray-500 mt-1">
             {(summary?.netBalance || 0) >= 0 ? 'Surplus' : 'Deficit'}
+          </div>
+        </div>
+      </div>
+
+      {/* Contributions Breakdown */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Contributions Breakdown</h2>
+        <div className="space-y-4">
+          {/* Regular Contributions */}
+          <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-3">
+              <div className="bg-green-600 rounded-full p-2">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Regular Contributions</h3>
+                <p className="text-sm text-gray-600">Monthly contributions from units</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-600">
+                ${summary?.regularContributions?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-xs text-gray-500">
+                {summary?.regularContributionsCount || 0} transactions
+              </div>
+            </div>
+          </div>
+
+          {/* Special Assessments */}
+          <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-600 rounded-full p-2">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Special Assessments</h3>
+                <p className="text-sm text-gray-600">Extraordinary contributions for projects</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-purple-600">
+                ${summary?.specialAssessments?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-xs text-gray-500">
+                {summary?.specialAssessmentsCount || 0} transactions
+              </div>
+            </div>
+          </div>
+
+          {/* Opening Balance */}
+          {summary?.openingBalance !== 0 && (
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-600 rounded-full p-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Opening Balance</h3>
+                  <p className="text-sm text-gray-600">Initial balance from previous management</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`text-2xl font-bold ${
+                  (summary?.openingBalance || 0) >= 0 ? 'text-blue-600' : 'text-red-600'
+                }`}>
+                  {(summary?.openingBalance || 0) >= 0 ? '+' : ''}${summary?.openingBalance?.toFixed(2) || '0.00'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {(summary?.openingBalance || 0) >= 0 ? 'Surplus' : 'Deficit'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Total Breakdown Bar */}
+          <div className="pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-semibold text-gray-700">Total Breakdown</span>
+              <span className="text-lg font-bold text-gray-900">${summary?.totalContributions?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden flex">
+              {summary?.totalContributions > 0 && (
+                <>
+                  {summary.regularContributions > 0 && (
+                    <div
+                      className="bg-green-600 h-full"
+                      style={{ width: `${(summary.regularContributions / summary.totalContributions) * 100}%` }}
+                      title={`Regular: ${((summary.regularContributions / summary.totalContributions) * 100).toFixed(1)}%`}
+                    ></div>
+                  )}
+                  {summary.specialAssessments > 0 && (
+                    <div
+                      className="bg-purple-600 h-full"
+                      style={{ width: `${(summary.specialAssessments / summary.totalContributions) * 100}%` }}
+                      title={`Special: ${((summary.specialAssessments / summary.totalContributions) * 100).toFixed(1)}%`}
+                    ></div>
+                  )}
+                  {summary.openingBalance > 0 && (
+                    <div
+                      className="bg-blue-600 h-full"
+                      style={{ width: `${(summary.openingBalance / summary.totalContributions) * 100}%` }}
+                      title={`Opening: ${((summary.openingBalance / summary.totalContributions) * 100).toFixed(1)}%`}
+                    ></div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-4 mt-2 text-xs text-gray-600">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-green-600 rounded"></div>
+                <span>Regular ({summary?.totalContributions > 0 ? ((summary.regularContributions / summary.totalContributions) * 100).toFixed(1) : 0}%)</span>
+              </div>
+              {summary?.specialAssessments > 0 && (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-purple-600 rounded"></div>
+                  <span>Special ({((summary.specialAssessments / summary.totalContributions) * 100).toFixed(1)}%)</span>
+                </div>
+              )}
+              {summary?.openingBalance > 0 && (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                  <span>Opening ({((summary.openingBalance / summary.totalContributions) * 100).toFixed(1)}%)</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

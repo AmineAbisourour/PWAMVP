@@ -25,6 +25,9 @@ export function TransactionsPage({ hoa, onBack }) {
   const [filterReceiptStatus, setFilterReceiptStatus] = useState(() => {
     return localStorage.getItem('hoa-filter-receipt') || 'all';
   }); // 'all', 'delivered', 'pending'
+  const [filterContributionType, setFilterContributionType] = useState(() => {
+    return localStorage.getItem('hoa-filter-contribution-type') || 'all';
+  }); // 'all', 'regular', 'special', 'opening'
 
   const loadTransactions = async () => {
     try {
@@ -55,6 +58,10 @@ export function TransactionsPage({ hoa, onBack }) {
     localStorage.setItem('hoa-filter-receipt', filterReceiptStatus);
   }, [filterReceiptStatus]);
 
+  useEffect(() => {
+    localStorage.setItem('hoa-filter-contribution-type', filterContributionType);
+  }, [filterContributionType]);
+
   // Apply filters to transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -62,6 +69,12 @@ export function TransactionsPage({ hoa, onBack }) {
       if (filterType !== 'all') {
         if (filterType === 'contributions' && t.transactionType !== 'contribution') return false;
         if (filterType === 'expenses' && t.transactionType !== 'expense') return false;
+      }
+
+      // Filter by contribution type (only for contributions)
+      if (filterContributionType !== 'all' && t.transactionType === 'contribution') {
+        const contributionType = t.contributionType || 'regular';
+        if (contributionType !== filterContributionType) return false;
       }
 
       // Filter by payment status
@@ -77,11 +90,12 @@ export function TransactionsPage({ hoa, onBack }) {
 
       return true;
     });
-  }, [transactions, filterType, filterPaymentStatus, filterReceiptStatus]);
+  }, [transactions, filterType, filterContributionType, filterPaymentStatus, filterReceiptStatus]);
 
   // Count active filters
   const activeFilterCount = [
     filterType !== 'all',
+    filterContributionType !== 'all',
     filterPaymentStatus !== 'all',
     filterReceiptStatus !== 'all',
   ].filter(Boolean).length;
@@ -89,9 +103,11 @@ export function TransactionsPage({ hoa, onBack }) {
   // Reset all filters and clear localStorage
   const resetFilters = () => {
     setFilterType('all');
+    setFilterContributionType('all');
     setFilterPaymentStatus('all');
     setFilterReceiptStatus('all');
     localStorage.removeItem('hoa-filter-type');
+    localStorage.removeItem('hoa-filter-contribution-type');
     localStorage.removeItem('hoa-filter-payment');
     localStorage.removeItem('hoa-filter-receipt');
   };
@@ -265,7 +281,7 @@ export function TransactionsPage({ hoa, onBack }) {
       {/* Filter Panel */}
       {showFilters && (
         <div className="mb-4 bg-white rounded-xl shadow-md p-4 border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Transaction Type Filter */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Transaction Type</label>
@@ -277,6 +293,22 @@ export function TransactionsPage({ hoa, onBack }) {
                 <option value="all">All Types</option>
                 <option value="contributions">Contributions</option>
                 <option value="expenses">Expenses</option>
+              </select>
+            </div>
+
+            {/* Contribution Type Filter (only show when contributions are included) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Contribution Type</label>
+              <select
+                value={filterContributionType}
+                onChange={(e) => setFilterContributionType(e.target.value)}
+                disabled={filterType === 'expenses'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="all">All Types</option>
+                <option value="regular">Regular</option>
+                <option value="special">Special Assessments</option>
+                <option value="opening">Opening Balance</option>
               </select>
             </div>
 
@@ -320,6 +352,17 @@ export function TransactionsPage({ hoa, onBack }) {
                     className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full flex items-center gap-1 hover:bg-blue-200 transition-colors"
                   >
                     {filterType === 'contributions' ? 'Contributions' : 'Expenses'}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+                {filterContributionType !== 'all' && (
+                  <button
+                    onClick={() => setFilterContributionType('all')}
+                    className="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-semibold rounded-full flex items-center gap-1 hover:bg-purple-200 transition-colors"
+                  >
+                    {filterContributionType === 'regular' ? 'Regular' : filterContributionType === 'special' ? 'Special' : 'Opening'}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>

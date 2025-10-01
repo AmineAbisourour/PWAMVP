@@ -8,9 +8,10 @@ import { TransactionsPage } from './components/TransactionsPage';
 import { Sidebar } from './components/Sidebar';
 import { HOASettings } from './components/HOASettings';
 import { Reports } from './components/Reports';
+import { SpecialAssessmentsPage } from './components/SpecialAssessmentsPage';
 
 function App() {
-  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'reports', 'settings'
+  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'
   const [currentHOA, setCurrentHOA] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -127,7 +128,7 @@ function App() {
   }
 
   // Views that don't need sidebar
-  const isAuthView = ['dashboard', 'transactions', 'reports', 'settings'].includes(currentView);
+  const isAuthView = ['dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'].includes(currentView);
 
   return (
     <>
@@ -174,6 +175,7 @@ function App() {
                     <h1 className="text-xl font-bold">
                       {currentView === 'dashboard' && 'Overview'}
                       {currentView === 'transactions' && 'All Transactions'}
+                      {currentView === 'specialAssessments' && 'Special Assessments'}
                       {currentView === 'reports' && 'Financial Reports'}
                       {currentView === 'settings' && 'HOA Settings'}
                     </h1>
@@ -191,6 +193,10 @@ function App() {
 
               {currentView === 'transactions' && (
                 <TransactionsPage hoa={currentHOA} onBack={handleBackToDashboard} />
+              )}
+
+              {currentView === 'specialAssessments' && (
+                <SpecialAssessmentsPage hoa={currentHOA} />
               )}
 
               {currentView === 'reports' && (
