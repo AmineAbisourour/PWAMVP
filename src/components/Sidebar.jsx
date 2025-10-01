@@ -40,7 +40,14 @@ export function Sidebar({ currentView, onNavigate, hoa, isOpen, onToggle }) {
             </button>
           </div>
           {hoa && (
-            <p className="text-sm text-gray-600 truncate">{hoa.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-600 truncate flex-1">{hoa.name}</p>
+              {hoa.isDemo && (
+                <span className="px-2 py-0.5 text-xs font-bold rounded bg-orange-500 text-white whitespace-nowrap flex-shrink-0">
+                  DEMO
+                </span>
+              )}
+            </div>
           )}
         </div>
 

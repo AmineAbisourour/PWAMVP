@@ -376,3 +376,84 @@ export async function clearAllData() {
     db.clear(EXPENSES_STORE),
   ]);
 }
+
+// ==========================================
+// DEMO MODE
+// ==========================================
+
+// Load demo data for users to explore the app
+export async function loadDemoData() {
+  // Create demo HOA
+  const hoaId = await createHOA({
+    name: 'Sunset Valley HOA',
+    address: '123 Valley View Drive, Sunset City, CA 94000',
+    numberOfUnits: 50,
+    monthlyContribution: 250,
+    isDemo: true,
+  });
+
+  // Get dates for demo data (last 3 months)
+  const now = new Date();
+  const months = [
+    new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 7), // 2 months ago
+    new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7), // 1 month ago
+    new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 7),     // current month
+  ];
+
+  // Sample contributions (12 contributions)
+  const contributions = [
+    { unitNumber: 12, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
+    { unitNumber: 7, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
+    { unitNumber: 23, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: false },
+    { unitNumber: 45, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
+    { unitNumber: 8, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
+    { unitNumber: 15, startMonth: months[1], amount: 500, paymentStatus: 'paid', receiptDelivered: false, endMonth: months[2] },
+    { unitNumber: 34, startMonth: months[1], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
+    { unitNumber: 19, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
+    { unitNumber: 42, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: false },
+    { unitNumber: 5, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
+    { unitNumber: 28, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
+    { unitNumber: 31, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
+  ];
+
+  // Sample expenses (8 expenses)
+  const expenses = [
+    { type: 'Landscaping', description: 'Monthly garden maintenance and lawn care', amount: 850, paymentStatus: 'paid' },
+    { type: 'Utilities', description: 'Common area electricity and water bill', amount: 420, paymentStatus: 'paid' },
+    { type: 'Maintenance', description: 'Pool cleaning and chemical treatment', amount: 350, paymentStatus: 'paid' },
+    { type: 'Insurance', description: 'Monthly HOA liability insurance premium', amount: 675, paymentStatus: 'paid' },
+    { type: 'Repairs', description: 'Front gate motor replacement', amount: 1250, paymentStatus: 'paid' },
+    { type: 'Security', description: 'Security patrol services for the month', amount: 800, paymentStatus: 'paid' },
+    { type: 'Maintenance', description: 'Elevator inspection and servicing', amount: 550, paymentStatus: 'pending' },
+    { type: 'Utilities', description: 'Internet service for common areas', amount: 120, paymentStatus: 'pending' },
+  ];
+
+  // Add contributions with slight time delays to create realistic timestamps
+  for (let i = 0; i < contributions.length; i++) {
+    await addContribution({
+      hoaId,
+      ...contributions[i],
+    });
+  }
+
+  // Add expenses
+  for (let i = 0; i < expenses.length; i++) {
+    await addExpense({
+      hoaId,
+      ...expenses[i],
+    });
+  }
+
+  return hoaId;
+}
+
+// Clear demo data and return to fresh state
+export async function clearDemoData() {
+  const hoas = await getAllHOAs();
+  const demoHOAs = hoas.filter(hoa => hoa.isDemo === true);
+
+  for (const hoa of demoHOAs) {
+    await clearAllTransactions(hoa.id);
+    await deleteHOA(hoa.id);
+  }
+}

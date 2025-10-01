@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllHOAs, createHOA, getHOAById } from './db/database';
+import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData } from './db/database';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
@@ -79,6 +79,35 @@ function App() {
     setCurrentHOA(updatedHOA);
   };
 
+  const handleLoadDemo = async () => {
+    try {
+      setLoading(true);
+      const id = await loadDemoData();
+      const demoHOA = await getHOAById(id);
+      setCurrentHOA(demoHOA);
+      setCurrentView('dashboard');
+    } catch (error) {
+      console.error('Error loading demo data:', error);
+      alert('Failed to load demo data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExitDemo = async () => {
+    try {
+      setLoading(true);
+      await clearDemoData();
+      setCurrentHOA(null);
+      setCurrentView('landing');
+    } catch (error) {
+      console.error('Error exiting demo mode:', error);
+      alert('Failed to exit demo mode. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -98,7 +127,7 @@ function App() {
       <OfflineIndicator />
 
       {currentView === 'landing' && (
-        <LandingPage onCreateHOA={handleCreateHOAClick} />
+        <LandingPage onCreateHOA={handleCreateHOAClick} onLoadDemo={handleLoadDemo} />
       )}
 
       {currentView === 'create' && (
@@ -150,7 +179,7 @@ function App() {
             {/* Page Content */}
             <main className="flex-1 p-4 md:p-6">
               {currentView === 'dashboard' && (
-                <Dashboard hoa={currentHOA} onViewAllTransactions={handleViewAllTransactions} />
+                <Dashboard hoa={currentHOA} onViewAllTransactions={handleViewAllTransactions} onExitDemo={handleExitDemo} />
               )}
 
               {currentView === 'transactions' && (

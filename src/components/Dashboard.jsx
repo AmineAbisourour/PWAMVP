@@ -5,7 +5,7 @@ import { AddExpenseForm } from './AddExpenseForm';
 import { TransactionDetailModal } from './TransactionDetailModal';
 import { getAllTransactions } from '../db/database';
 
-export function Dashboard({ hoa, onViewAllTransactions }) {
+export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   const {
     financialSummary,
     loading,
@@ -155,6 +155,35 @@ export function Dashboard({ hoa, onViewAllTransactions }) {
 
   return (
     <div className="pb-6 max-w-4xl mx-auto">
+        {/* Demo Mode Banner */}
+        {hoa.isDemo && (
+          <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl shadow-lg p-4 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-full p-2">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <div className="text-white">
+                  <h3 className="font-bold text-lg">Demo Mode</h3>
+                  <p className="text-sm text-orange-50">You're viewing sample data to explore the app</p>
+                </div>
+              </div>
+              <button
+                onClick={onExitDemo}
+                className="bg-white text-orange-600 px-4 py-2 rounded-lg font-semibold hover:bg-orange-50 active:bg-orange-100 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Exit Demo & Start Fresh
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Welcome Message */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back!</h2>
