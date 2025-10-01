@@ -109,7 +109,7 @@ function App() {
       )}
 
       {isAuthView && currentHOA && (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50">
           {/* Sidebar */}
           <Sidebar
             currentView={currentView}
@@ -119,8 +119,8 @@ function App() {
             onToggle={toggleSidebar}
           />
 
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col min-h-screen">
+          {/* Main Content - with margin-left on desktop to account for fixed sidebar */}
+          <div className="flex flex-col min-h-screen md:ml-64">
             {/* Header with hamburger menu */}
             <header className="bg-blue-600 text-white shadow-lg safe-area-inset sticky top-0 z-30">
               <div className="px-4 py-4">
@@ -136,7 +136,7 @@ function App() {
                   </button>
                   <div>
                     <h1 className="text-xl font-bold">
-                      {currentView === 'dashboard' && 'Dashboard'}
+                      {currentView === 'dashboard' && 'Overview'}
                       {currentView === 'transactions' && 'All Transactions'}
                       {currentView === 'reports' && 'Financial Reports'}
                       {currentView === 'settings' && 'HOA Settings'}

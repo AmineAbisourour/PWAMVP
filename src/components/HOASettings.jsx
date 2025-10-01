@@ -17,6 +17,7 @@ export function HOASettings({ hoa, onUpdate }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [financialSummary, setFinancialSummary] = useState(null);
+  const [isDangerZoneExpanded, setIsDangerZoneExpanded] = useState(false);
 
   // Load HOA data into form
   useEffect(() => {
@@ -303,21 +304,45 @@ export function HOASettings({ hoa, onUpdate }) {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border-2 border-red-200">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mt-6 bg-white rounded-2xl shadow-lg border-2 border-red-200 overflow-hidden">
+        {/* Collapsible Header */}
+        <button
+          onClick={() => setIsDangerZoneExpanded(!isDangerZoneExpanded)}
+          className="w-full p-6 md:p-8 flex items-center justify-between hover:bg-red-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <h2 className="text-2xl font-bold text-red-900">Danger Zone</h2>
+            <div className="text-left">
+              <h2 className="text-2xl font-bold text-red-900">Danger Zone</h2>
+              <p className="text-sm text-red-700 mt-1">
+                Destructive actions that cannot be undone
+              </p>
+            </div>
           </div>
-          <p className="text-red-700">
-            Destructive actions that cannot be undone. Proceed with caution.
-          </p>
-        </div>
+          <svg
+            className={`w-6 h-6 text-red-600 flex-shrink-0 transition-transform duration-300 ${
+              isDangerZoneExpanded ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
-        {/* Delete All Transactions */}
-        <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+        {/* Collapsible Content */}
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            isDangerZoneExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+          } overflow-hidden`}
+        >
+          <div className="px-6 md:px-8 pb-6 md:pb-8 space-y-6">
+
+            {/* Delete All Transactions */}
+            <div className="p-4 bg-red-50 rounded-xl border border-red-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h3 className="text-lg font-bold text-red-900 mb-1">Delete All Transactions</h3>
@@ -338,10 +363,10 @@ export function HOASettings({ hoa, onUpdate }) {
               Delete All Transactions
             </button>
           </div>
-        </div>
+            </div>
 
-        {/* Reset Entire App */}
-        <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+            {/* Reset Entire App */}
+            <div className="p-4 bg-red-50 rounded-xl border border-red-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h3 className="text-lg font-bold text-red-900 mb-1">Reset Entire App</h3>
@@ -355,6 +380,8 @@ export function HOASettings({ hoa, onUpdate }) {
             >
               Reset App
             </button>
+          </div>
+            </div>
           </div>
         </div>
       </div>
