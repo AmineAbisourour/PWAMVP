@@ -223,6 +223,66 @@ export async function clearExpensesByHOA(hoaId) {
 }
 
 // ==========================================
+// BULK OPERATIONS
+// ==========================================
+
+// Bulk update payment status for contributions and expenses
+export async function bulkUpdatePaymentStatus(contributionIds, expenseIds, status) {
+  const db = await initDB();
+  const updates = [];
+
+  // Update contributions
+  if (contributionIds.length > 0) {
+    const contributionUpdates = contributionIds.map(async (id) => {
+      const contribution = await db.get(CONTRIBUTIONS_STORE, id);
+      if (contribution) {
+        return db.put(CONTRIBUTIONS_STORE, {
+          ...contribution,
+          paymentStatus: status,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+    updates.push(...contributionUpdates);
+  }
+
+  // Update expenses
+  if (expenseIds.length > 0) {
+    const expenseUpdates = expenseIds.map(async (id) => {
+      const expense = await db.get(EXPENSES_STORE, id);
+      if (expense) {
+        return db.put(EXPENSES_STORE, {
+          ...expense,
+          paymentStatus: status,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+    updates.push(...expenseUpdates);
+  }
+
+  await Promise.all(updates);
+}
+
+// Bulk update receipt delivered status for contributions
+export async function bulkUpdateReceiptStatus(contributionIds, delivered) {
+  const db = await initDB();
+
+  const updates = contributionIds.map(async (id) => {
+    const contribution = await db.get(CONTRIBUTIONS_STORE, id);
+    if (contribution) {
+      return db.put(CONTRIBUTIONS_STORE, {
+        ...contribution,
+        receiptDelivered: delivered,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  });
+
+  await Promise.all(updates);
+}
+
+// ==========================================
 // FINANCIAL CALCULATIONS
 // ==========================================
 
