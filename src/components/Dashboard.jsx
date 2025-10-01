@@ -63,17 +63,7 @@ export function Dashboard({ hoa, onViewAllTransactions }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-blue-600 text-white shadow-lg safe-area-inset">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold">{hoa.name}</h1>
-          <p className="text-blue-100 text-sm mt-1">{hoa.address}</p>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="pb-6 max-w-4xl mx-auto">
         {/* Financial Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl shadow-md p-6">
@@ -210,7 +200,6 @@ export function Dashboard({ hoa, onViewAllTransactions }) {
             </div>
           )}
         </div>
-      </main>
 
       {/* Modals */}
       {showContributionForm && (

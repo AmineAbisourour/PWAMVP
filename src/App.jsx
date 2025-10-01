@@ -5,11 +5,15 @@ import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
 import { Dashboard } from './components/Dashboard';
 import { TransactionsPage } from './components/TransactionsPage';
+import { Sidebar } from './components/Sidebar';
+import { HOASettings } from './components/HOASettings';
+import { Reports } from './components/Reports';
 
 function App() {
-  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions'
+  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'reports', 'settings'
   const [currentHOA, setCurrentHOA] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Check if HOA exists on mount
   useEffect(() => {
@@ -63,6 +67,18 @@ function App() {
     setCurrentView('dashboard');
   };
 
+  const handleNavigate = (view) => {
+    setCurrentView(view);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleHOAUpdate = (updatedHOA) => {
+    setCurrentHOA(updatedHOA);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -73,6 +89,9 @@ function App() {
       </div>
     );
   }
+
+  // Views that don't need sidebar
+  const isAuthView = ['dashboard', 'transactions', 'reports', 'settings'].includes(currentView);
 
   return (
     <>
@@ -89,12 +108,65 @@ function App() {
         />
       )}
 
-      {currentView === 'dashboard' && currentHOA && (
-        <Dashboard hoa={currentHOA} onViewAllTransactions={handleViewAllTransactions} />
-      )}
+      {isAuthView && currentHOA && (
+        <div className="flex min-h-screen bg-gray-50">
+          {/* Sidebar */}
+          <Sidebar
+            currentView={currentView}
+            onNavigate={handleNavigate}
+            hoa={currentHOA}
+            isOpen={sidebarOpen}
+            onToggle={toggleSidebar}
+          />
 
-      {currentView === 'transactions' && currentHOA && (
-        <TransactionsPage hoa={currentHOA} onBack={handleBackToDashboard} />
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col min-h-screen">
+            {/* Header with hamburger menu */}
+            <header className="bg-blue-600 text-white shadow-lg safe-area-inset sticky top-0 z-30">
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={toggleSidebar}
+                    className="md:hidden p-2 hover:bg-blue-700 rounded-lg transition-colors"
+                    aria-label="Toggle menu"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <div>
+                    <h1 className="text-xl font-bold">
+                      {currentView === 'dashboard' && 'Dashboard'}
+                      {currentView === 'transactions' && 'All Transactions'}
+                      {currentView === 'reports' && 'Financial Reports'}
+                      {currentView === 'settings' && 'HOA Settings'}
+                    </h1>
+                    <p className="text-blue-100 text-sm">{currentHOA.name}</p>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            {/* Page Content */}
+            <main className="flex-1 p-4 md:p-6">
+              {currentView === 'dashboard' && (
+                <Dashboard hoa={currentHOA} onViewAllTransactions={handleViewAllTransactions} />
+              )}
+
+              {currentView === 'transactions' && (
+                <TransactionsPage hoa={currentHOA} onBack={handleBackToDashboard} />
+              )}
+
+              {currentView === 'reports' && (
+                <Reports hoa={currentHOA} />
+              )}
+
+              {currentView === 'settings' && (
+                <HOASettings hoa={currentHOA} onUpdate={handleHOAUpdate} />
+              )}
+            </main>
+          </div>
+        </div>
       )}
     </>
   );
