@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - HOA PWA</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .icon svg {
+      width: 60px;
+      height: 60px;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: 18px;
+      line-height: 1.6;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+
+    .info {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      margin-top: 30px;
+    }
+
+    .info h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .info ul {
+      text-align: left;
+      list-style: none;
+      font-size: 15px;
+      line-height: 2;
+      opacity: 0.9;
+    }
+
+    .info li:before {
+      content: "✓ ";
+      margin-right: 8px;
+      font-weight: bold;
+    }
+
+    .retry-button {
+      background: white;
+      color: #2563eb;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 24px;
+    }
+
+    .retry-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .retry-button:active {
+      transform: translateY(0);
+    }
+
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon pulse">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+      </svg>
+    </div>
+
+    <h1>You're Offline</h1>
+    <p>
+      It looks like you've lost your internet connection.
+      Don't worry, your HOA data is safely stored on your device.
+    </p>
+
+    <button class="retry-button" onclick="location.reload()">
+      Try Again
+    </button>
+
+    <div class="info">
+      <h2>What You Can Still Do:</h2>
+      <ul>
+        <li>View your HOA information</li>
+        <li>Browse all transactions</li>
+        <li>Add new contributions</li>
+        <li>Record new expenses</li>
+        <li>View financial summaries</li>
+      </ul>
+      <p style="margin-top: 16px; font-size: 14px; opacity: 0.8;">
+        All changes will sync automatically when you're back online.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Auto-retry connection every 5 seconds
+    let retryCount = 0;
+    const maxRetries = 12; // Try for 1 minute
+
+    function checkConnection() {
+      if (navigator.onLine && retryCount < maxRetries) {
+        retryCount++;
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+          .then(() => {
+            location.reload();
+          })
+          .catch(() => {
+            console.log('Still offline, retrying...');
+          });
+      }
+    }
+
+    // Check connection every 5 seconds
+    setInterval(checkConnection, 5000);
+
+    // Also listen for online event
+    window.addEventListener('online', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
