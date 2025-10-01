@@ -6,6 +6,7 @@ export function CreateHOAForm({ onCancel, onCreate }) {
     address: '',
     numberOfUnits: '',
     monthlyContribution: '',
+    openingBalance: '0',
   });
 
   const [errors, setErrors] = useState({});
@@ -57,6 +58,7 @@ export function CreateHOAForm({ onCancel, onCreate }) {
         address: formData.address.trim(),
         numberOfUnits: parseInt(formData.numberOfUnits, 10),
         monthlyContribution: parseFloat(formData.monthlyContribution),
+        openingBalance: parseFloat(formData.openingBalance) || 0,
       });
     }
   };
@@ -175,6 +177,31 @@ export function CreateHOAForm({ onCancel, onCreate }) {
               {errors.monthlyContribution && (
                 <p className="mt-1 text-sm text-red-600">{errors.monthlyContribution}</p>
               )}
+            </div>
+
+            {/* Opening Balance */}
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <label htmlFor="openingBalance" className="block text-sm font-semibold text-gray-700 mb-2">
+                Opening Balance (Optional)
+              </label>
+              <div className="relative mb-2">
+                <span className="absolute left-4 top-3 text-gray-500">$</span>
+                <input
+                  type="number"
+                  id="openingBalance"
+                  name="openingBalance"
+                  value={formData.openingBalance}
+                  onChange={handleChange}
+                  step="0.01"
+                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-gray-600">
+                <span className="font-semibold">Taking over from previous management?</span><br />
+                Enter positive amount for surplus, negative for deficit.
+                Leave at $0 if starting fresh.
+              </p>
             </div>
 
             {/* Buttons */}

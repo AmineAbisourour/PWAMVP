@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useFinancials } from '../hooks/useFinancials';
 import { AddContributionForm } from './AddContributionForm';
 import { AddExpenseForm } from './AddExpenseForm';
+import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
 import { TransactionDetailModal } from './TransactionDetailModal';
-import { getAllTransactions } from '../db/database';
+import { getAllTransactions, addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
 
 export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   const {
@@ -16,7 +17,9 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
 
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [showSpecialAssessmentForm, setShowSpecialAssessmentForm] = useState(false);
   const [transactions, setTransactions] = useState([]);
+  const [specialAssessments, setSpecialAssessments] = useState([]);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [collectionRateMode, setCollectionRateMode] = useState('overall'); // 'monthly', 'yearly', 'overall'
   const [quickStats, setQuickStats] = useState({
@@ -28,6 +31,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
 
   useEffect(() => {
     loadTransactions();
+    loadSpecialAssessments();
   }, [hoa.id]);
 
   useEffect(() => {
@@ -40,6 +44,15 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
       setTransactions(data);
     } catch (error) {
       console.error('Error loading transactions:', error);
+    }
+  };
+
+  const loadSpecialAssessments = async () => {
+    try {
+      const data = await getSpecialAssessmentsByPurpose(hoa.id);
+      setSpecialAssessments(data);
+    } catch (error) {
+      console.error('Error loading special assessments:', error);
     }
   };
 
@@ -133,6 +146,19 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
     await createExpense(data);
     setShowExpenseForm(false);
     loadTransactions();
+  };
+
+  const handleCreateSpecialAssessment = async (data) => {
+    try {
+      await addBulkSpecialAssessment(data);
+      setShowSpecialAssessmentForm(false);
+      loadTransactions();
+      loadSpecialAssessments();
+      refresh();
+    } catch (error) {
+      console.error('Error creating special assessment:', error);
+      alert('Failed to create special assessment. Please try again.');
+    }
   };
 
   const handleTransactionUpdate = () => {
@@ -327,7 +353,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <button
               onClick={() => setShowContributionForm(true)}
               className="bg-green-600 text-white py-4 px-4 rounded-xl font-semibold hover:bg-green-700 active:bg-green-800 transition-colors shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-2"
@@ -347,8 +373,75 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
               </svg>
               <span>Add Expense</span>
             </button>
+
+            <button
+              onClick={() => setShowSpecialAssessmentForm(true)}
+              className="bg-purple-600 text-white py-4 px-4 rounded-xl font-semibold hover:bg-purple-700 active:bg-purple-800 transition-colors shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-2"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span className="text-center">Special Assessment</span>
+            </button>
           </div>
         </div>
+
+        {/* Special Assessments Summary */}
+        {specialAssessments.length > 0 && (
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md p-6 mb-6 border border-purple-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-600 rounded-full p-2">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Active Special Assessments</h3>
+                  <p className="text-sm text-gray-600">{specialAssessments.length} ongoing {specialAssessments.length === 1 ? 'project' : 'projects'}</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {specialAssessments.slice(0, 3).map((assessment, index) => {
+                const collectionRate = assessment.totalAmount > 0
+                  ? (assessment.paidAmount / assessment.totalAmount) * 100
+                  : 0;
+                return (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-purple-200">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900">{assessment.purpose}</h4>
+                      <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                        {assessment.paidCount}/{assessment.totalCount}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Total</span>
+                        <span className="font-semibold">${assessment.totalAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${collectionRate}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Collected: ${assessment.paidAmount.toFixed(2)}</span>
+                        <span>Pending: ${assessment.pendingAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {specialAssessments.length > 3 && (
+              <p className="text-center text-sm text-purple-700 font-semibold mt-4">
+                + {specialAssessments.length - 3} more assessment{specialAssessments.length - 3 > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Recent Activity */}
         <div className="bg-white rounded-xl shadow-md p-6">
@@ -449,6 +542,14 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
         <AddExpenseForm
           onCancel={() => setShowExpenseForm(false)}
           onCreate={handleCreateExpense}
+        />
+      )}
+
+      {showSpecialAssessmentForm && (
+        <AddSpecialAssessmentForm
+          hoa={hoa}
+          onCancel={() => setShowSpecialAssessmentForm(false)}
+          onCreate={handleCreateSpecialAssessment}
         />
       )}
 

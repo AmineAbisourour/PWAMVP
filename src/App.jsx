@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData } from './db/database';
+import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData, addOpeningBalance } from './db/database';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
@@ -49,7 +49,14 @@ function App() {
 
   const handleHOACreate = async (hoaData) => {
     try {
-      const id = await createHOA(hoaData);
+      const { openingBalance, ...hoaDetails } = hoaData;
+      const id = await createHOA(hoaDetails);
+
+      // If opening balance is provided and non-zero, create an opening balance record
+      if (openingBalance && openingBalance !== 0) {
+        await addOpeningBalance(id, openingBalance);
+      }
+
       const newHOA = await getHOAById(id);
       setCurrentHOA(newHOA);
       setCurrentView('dashboard');

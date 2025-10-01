@@ -114,6 +114,8 @@ export async function addContribution(contributionData) {
   const db = await initDB();
   const contribution = {
     ...contributionData,
+    contributionType: contributionData.contributionType || 'regular', // 'regular', 'special', 'opening'
+    purpose: contributionData.purpose || null, // Purpose/description for special assessments
     paymentStatus: contributionData.paymentStatus || 'pending',
     receiptDelivered: contributionData.receiptDelivered || false,
     createdAt: new Date().toISOString(),
@@ -283,6 +285,115 @@ export async function bulkUpdateReceiptStatus(contributionIds, delivered) {
 }
 
 // ==========================================
+// SPECIAL ASSESSMENTS
+// ==========================================
+
+// Add a special assessment for a single unit
+export async function addSpecialAssessment(assessmentData) {
+  const { hoaId, unitNumber, purpose, amount, dueDate, notes } = assessmentData;
+
+  return addContribution({
+    hoaId,
+    unitNumber,
+    contributionType: 'special',
+    purpose,
+    amount,
+    startMonth: dueDate || new Date().toISOString().slice(0, 7),
+    paymentStatus: 'pending',
+    receiptDelivered: false,
+    notes: notes || null,
+  });
+}
+
+// Add a special assessment for multiple units (bulk)
+export async function addBulkSpecialAssessment(assessmentData) {
+  const { hoaId, unitNumbers, purpose, amountPerUnit, dueDate, notes } = assessmentData;
+
+  const promises = unitNumbers.map(unitNumber =>
+    addSpecialAssessment({
+      hoaId,
+      unitNumber,
+      purpose,
+      amount: amountPerUnit,
+      dueDate,
+      notes,
+    })
+  );
+
+  return Promise.all(promises);
+}
+
+// Add opening balance as a special contribution
+export async function addOpeningBalance(hoaId, amount) {
+  // Opening balance is recorded as a special contribution without a unit number
+  return addContribution({
+    hoaId,
+    unitNumber: 0, // Special marker for opening balance
+    contributionType: 'opening',
+    purpose: 'Opening Balance',
+    amount,
+    startMonth: new Date().toISOString().slice(0, 7),
+    paymentStatus: 'paid', // Opening balance is always "paid" (it's a starting point)
+    receiptDelivered: true,
+  });
+}
+
+// Get all special assessments for a HOA (excluding opening balance)
+export async function getSpecialAssessments(hoaId) {
+  const contributions = await getContributionsByHOA(hoaId);
+  return contributions.filter(c => c.contributionType === 'special');
+}
+
+// Get special assessments grouped by purpose
+export async function getSpecialAssessmentsByPurpose(hoaId) {
+  const specialAssessments = await getSpecialAssessments(hoaId);
+
+  const grouped = {};
+  specialAssessments.forEach(assessment => {
+    const purpose = assessment.purpose || 'Unnamed Assessment';
+    if (!grouped[purpose]) {
+      grouped[purpose] = {
+        purpose,
+        assessments: [],
+        totalAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        totalCount: 0,
+        paidCount: 0,
+        pendingCount: 0,
+      };
+    }
+
+    grouped[purpose].assessments.push(assessment);
+    grouped[purpose].totalAmount += assessment.amount;
+    grouped[purpose].totalCount += 1;
+
+    if (assessment.paymentStatus === 'paid') {
+      grouped[purpose].paidAmount += assessment.amount;
+      grouped[purpose].paidCount += 1;
+    } else {
+      grouped[purpose].pendingAmount += assessment.amount;
+      grouped[purpose].pendingCount += 1;
+    }
+  });
+
+  return Object.values(grouped);
+}
+
+// Get regular contributions only
+export async function getRegularContributions(hoaId) {
+  const contributions = await getContributionsByHOA(hoaId);
+  return contributions.filter(c => !c.contributionType || c.contributionType === 'regular');
+}
+
+// Get opening balance for a HOA
+export async function getOpeningBalance(hoaId) {
+  const contributions = await getContributionsByHOA(hoaId);
+  const openingBalanceRecord = contributions.find(c => c.contributionType === 'opening');
+  return openingBalanceRecord ? openingBalanceRecord.amount : 0;
+}
+
+// ==========================================
 // FINANCIAL CALCULATIONS
 // ==========================================
 
@@ -323,6 +434,46 @@ export async function getFinancialSummary(hoaId) {
   };
 }
 
+// Get enhanced financial summary with breakdown by contribution type
+export async function getFinancialSummaryEnhanced(hoaId) {
+  const [contributions, expenses] = await Promise.all([
+    getContributionsByHOA(hoaId),
+    getExpensesByHOA(hoaId),
+  ]);
+
+  // Separate contributions by type
+  const regularContributions = contributions.filter(c => !c.contributionType || c.contributionType === 'regular');
+  const specialAssessments = contributions.filter(c => c.contributionType === 'special');
+  const openingBalance = contributions.find(c => c.contributionType === 'opening');
+
+  const regularTotal = regularContributions.reduce((sum, c) => sum + c.amount, 0);
+  const specialTotal = specialAssessments.reduce((sum, c) => sum + c.amount, 0);
+  const openingBalanceAmount = openingBalance ? openingBalance.amount : 0;
+  const totalContributions = regularTotal + specialTotal + openingBalanceAmount;
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  return {
+    // Totals
+    totalContributions,
+    totalExpenses,
+    netBalance: totalContributions - totalExpenses,
+
+    // Breakdown
+    regularContributions: regularTotal,
+    specialAssessments: specialTotal,
+    openingBalance: openingBalanceAmount,
+
+    // Counts
+    regularContributionsCount: regularContributions.length,
+    specialAssessmentsCount: specialAssessments.length,
+    expensesCount: expenses.length,
+
+    // Detailed arrays
+    contributions,
+    expenses,
+  };
+}
+
 // ==========================================
 // UNIFIED TRANSACTIONS
 // ==========================================
@@ -341,6 +492,8 @@ export async function getAllTransactions(hoaId) {
     // Ensure status fields have defaults for existing records
     paymentStatus: c.paymentStatus || 'pending',
     receiptDelivered: c.receiptDelivered || false,
+    contributionType: c.contributionType || 'regular', // Default to regular for backward compatibility
+    purpose: c.purpose || null,
   }));
 
   const expensesWithType = expenses.map(e => ({
@@ -442,6 +595,47 @@ export async function loadDemoData() {
       hoaId,
       ...expenses[i],
     });
+  }
+
+  // Add special assessments for two projects
+  // 1. Facade Repainting - for units 1-20
+  await addBulkSpecialAssessment({
+    hoaId,
+    unitNumbers: Array.from({ length: 20 }, (_, i) => i + 1),
+    purpose: 'Building Facade Repainting',
+    amountPerUnit: 450,
+    dueDate: months[2],
+    notes: 'Special assessment for exterior facade renovation project',
+  });
+
+  // Mark some units as paid for realism
+  const facadeContributions = await getContributionsByHOA(hoaId);
+  const facadeAssessments = facadeContributions.filter(c =>
+    c.contributionType === 'special' && c.purpose === 'Building Facade Repainting'
+  );
+  // Mark first 12 units as paid
+  for (let i = 0; i < Math.min(12, facadeAssessments.length); i++) {
+    await updateContribution(facadeAssessments[i].id, { paymentStatus: 'paid' });
+  }
+
+  // 2. Emergency Roof Repair - for all units
+  await addBulkSpecialAssessment({
+    hoaId,
+    unitNumbers: Array.from({ length: 50 }, (_, i) => i + 1),
+    purpose: 'Emergency Roof Repair',
+    amountPerUnit: 180,
+    dueDate: months[1],
+    notes: 'Urgent repairs needed after storm damage',
+  });
+
+  // Mark most units as paid for this older assessment
+  const roofContributions = await getContributionsByHOA(hoaId);
+  const roofAssessments = roofContributions.filter(c =>
+    c.contributionType === 'special' && c.purpose === 'Emergency Roof Repair'
+  );
+  // Mark 42 out of 50 as paid
+  for (let i = 0; i < Math.min(42, roofAssessments.length); i++) {
+    await updateContribution(roofAssessments[i].id, { paymentStatus: 'paid' });
   }
 
   return hoaId;
