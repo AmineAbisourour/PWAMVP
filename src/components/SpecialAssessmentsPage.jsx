@@ -30,12 +30,42 @@ export function SpecialAssessmentsPage({ hoa }) {
   };
 
   const handleTogglePaymentStatus = async (assessmentId, currentStatus) => {
+    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
+
+    // Optimistic update - update UI immediately
+    setAssessments(prev => prev.map(assessment => {
+      // Find if this assessment group contains the unit we're updating
+      const hasUnit = assessment.assessments.some(a => a.id === assessmentId);
+      if (!hasUnit) return assessment;
+
+      // Update the specific unit
+      const updatedAssessments = assessment.assessments.map(a =>
+        a.id === assessmentId ? { ...a, paymentStatus: newStatus } : a
+      );
+
+      // Recalculate totals for this group
+      const paidAmount = updatedAssessments
+        .filter(a => a.paymentStatus === 'paid')
+        .reduce((sum, a) => sum + a.amount, 0);
+      const paidCount = updatedAssessments.filter(a => a.paymentStatus === 'paid').length;
+      const pendingAmount = assessment.totalAmount - paidAmount;
+
+      return {
+        ...assessment,
+        assessments: updatedAssessments,
+        paidAmount,
+        paidCount,
+        pendingAmount,
+      };
+    }));
+
+    // Update database in background
     try {
-      const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
       await updateContribution(assessmentId, { paymentStatus: newStatus });
-      await loadAssessments();
     } catch (error) {
       console.error('Error updating payment status:', error);
+      // Revert on error
+      await loadAssessments();
       alert('Failed to update payment status. Please try again.');
     }
   };

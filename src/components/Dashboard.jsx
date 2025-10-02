@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useFinancials } from '../hooks/useFinancials';
+import { useTransactions } from '../hooks/useTransactions';
 import { AddContributionForm } from './AddContributionForm';
 import { AddExpenseForm } from './AddExpenseForm';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
@@ -14,10 +14,10 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   const {
     financialSummary,
     loading,
-    createContribution,
-    createExpense,
+    addContribution,
+    addExpense,
     refresh,
-  } = useFinancials(hoa.id);
+  } = useTransactions(hoa.id);
 
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -141,13 +141,13 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   };
 
   const handleCreateContribution = async (data) => {
-    await createContribution(data);
+    await addContribution(data);
     setShowContributionForm(false);
     loadTransactions();
   };
 
   const handleCreateExpense = async (data) => {
-    await createExpense(data);
+    await addExpense(data);
     setShowExpenseForm(false);
     loadTransactions();
   };
