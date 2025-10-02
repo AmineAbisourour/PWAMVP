@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { updateContribution, updateExpense, deleteContribution, deleteExpense } from '../db/database';
+import { formatCurrency } from '../utils/currency';
+import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
-export function TransactionDetailModal({ transaction, onClose, onUpdate }) {
+export function TransactionDetailModal({ transaction, hoa, onClose, onUpdate }) {
+  const currency = getCurrencyForCountry(hoa.country);
+  const locale = getLocaleForCountry(hoa.country);
   const [paymentStatus, setPaymentStatus] = useState(transaction.paymentStatus || 'pending');
   const [receiptDelivered, setReceiptDelivered] = useState(transaction.receiptDelivered || false);
   const [saving, setSaving] = useState(false);
@@ -93,7 +97,7 @@ export function TransactionDetailModal({ transaction, onClose, onUpdate }) {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Amount</span>
               <span className={`text-2xl font-bold ${isContribution ? 'text-green-600' : 'text-red-600'}`}>
-                ${transaction.amount.toFixed(2)}
+                {formatCurrency(transaction.amount, currency, locale)}
               </span>
             </div>
 

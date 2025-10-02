@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
+import { getCurrencySymbol } from '../utils/currency';
+import { getCurrencyForCountry } from '../utils/countries';
 
 export function AddContributionForm({ hoa, onCancel, onCreate }) {
+  const currency = getCurrencyForCountry(hoa.country);
   const [formData, setFormData] = useState({
     unitNumber: '',
     startMonth: '',
@@ -207,7 +210,9 @@ export function AddContributionForm({ hoa, onCancel, onCreate }) {
               Amount *
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-3 text-gray-500">$</span>
+              <span className="absolute left-4 top-3 text-gray-500 font-medium">
+                {getCurrencySymbol(currency)}
+              </span>
               <input
                 type="number"
                 id="amount"
@@ -216,7 +221,7 @@ export function AddContributionForm({ hoa, onCancel, onCreate }) {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className={`w-full pl-8 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors ${
+                className={`w-full pl-16 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors ${
                   errors.amount ? 'border-red-500' : 'border-gray-300'
                 }`}
               />

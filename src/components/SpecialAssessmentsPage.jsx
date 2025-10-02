@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import { getSpecialAssessmentsByPurpose, updateContribution } from '../db/database';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
 import { addBulkSpecialAssessment } from '../db/database';
+import { formatCurrency } from '../utils/currency';
+import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
 export function SpecialAssessmentsPage({ hoa }) {
+  const currency = getCurrencyForCountry(hoa.country);
+  const locale = getLocaleForCountry(hoa.country);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedAssessment, setExpandedAssessment] = useState(null);
@@ -108,7 +112,7 @@ export function SpecialAssessmentsPage({ hoa }) {
               </svg>
             </div>
             <div className="text-3xl font-bold text-gray-900">
-              ${assessments.reduce((sum, a) => sum + a.totalAmount, 0).toFixed(2)}
+              {formatCurrency(assessments.reduce((sum, a) => sum + a.totalAmount, 0), currency, locale)}
             </div>
             <div className="text-sm text-gray-500 mt-1">
               Across all projects
@@ -190,15 +194,15 @@ export function SpecialAssessmentsPage({ hoa }) {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Total Amount:</span>
-                          <p className="font-bold text-gray-900">${assessment.totalAmount.toFixed(2)}</p>
+                          <p className="font-bold text-gray-900">{formatCurrency(assessment.totalAmount, currency, locale)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Collected:</span>
-                          <p className="font-bold text-green-600">${assessment.paidAmount.toFixed(2)}</p>
+                          <p className="font-bold text-green-600">{formatCurrency(assessment.paidAmount, currency, locale)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Pending:</span>
-                          <p className="font-bold text-orange-600">${assessment.pendingAmount.toFixed(2)}</p>
+                          <p className="font-bold text-orange-600">{formatCurrency(assessment.pendingAmount, currency, locale)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Due Date:</span>
@@ -229,7 +233,7 @@ export function SpecialAssessmentsPage({ hoa }) {
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>{collectionRate.toFixed(1)}% collected</span>
-                    <span>${assessment.pendingAmount.toFixed(2)} remaining</span>
+                    <span>{formatCurrency(assessment.pendingAmount, currency, locale)} remaining</span>
                   </div>
                 </div>
 
@@ -255,7 +259,7 @@ export function SpecialAssessmentsPage({ hoa }) {
                           >
                             <div className="font-bold text-lg mb-1">Unit {unit.unitNumber}</div>
                             <div className="text-xs font-semibold mb-1">
-                              ${unit.amount.toFixed(2)}
+                              {formatCurrency(unit.amount, currency, locale)}
                             </div>
                             <div className={`text-xs px-2 py-1 rounded-full ${
                               unit.paymentStatus === 'paid'

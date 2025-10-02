@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { getCurrencySymbol } from '../utils/currency';
+import { getAllCountries, getCurrencyForCountry, getCountriesSorted } from '../utils/countries';
 
 export function CreateHOAForm({ onCancel, onCreate }) {
   const [formData, setFormData] = useState({
@@ -6,8 +8,12 @@ export function CreateHOAForm({ onCancel, onCreate }) {
     address: '',
     numberOfUnits: '',
     monthlyContribution: '',
-    openingBalance: '0',
+    country: 'MA',
+    openingBalance: '',
   });
+
+  const countries = getCountriesSorted();
+  const currentCountryCurrency = getCurrencyForCountry(formData.country);
 
   const [errors, setErrors] = useState({});
 
@@ -58,6 +64,7 @@ export function CreateHOAForm({ onCancel, onCreate }) {
         address: formData.address.trim(),
         numberOfUnits: parseInt(formData.numberOfUnits, 10),
         monthlyContribution: parseFloat(formData.monthlyContribution),
+        country: formData.country,
         openingBalance: parseFloat(formData.openingBalance) || 0,
       });
     }
@@ -131,6 +138,29 @@ export function CreateHOAForm({ onCancel, onCreate }) {
               )}
             </div>
 
+            {/* Country Selector */}
+            <div>
+              <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
+                Country *
+              </label>
+              <select
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors bg-white"
+              >
+                {countries.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Currency and number formatting will be set based on your country
+              </p>
+            </div>
+
             {/* Number of Units */}
             <div>
               <label htmlFor="numberOfUnits" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -159,7 +189,9 @@ export function CreateHOAForm({ onCancel, onCreate }) {
                 Monthly Contribution Amount *
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-3 text-gray-500">$</span>
+                <span className="absolute left-4 top-3 text-gray-500 font-medium">
+                  {getCurrencySymbol(currentCountryCurrency)}
+                </span>
                 <input
                   type="number"
                   id="monthlyContribution"
@@ -168,7 +200,7 @@ export function CreateHOAForm({ onCancel, onCreate }) {
                   onChange={handleChange}
                   min="0"
                   step="0.01"
-                  className={`w-full pl-8 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors ${
+                  className={`w-full pl-16 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors ${
                     errors.monthlyContribution ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="0.00"
@@ -185,7 +217,9 @@ export function CreateHOAForm({ onCancel, onCreate }) {
                 Opening Balance (Optional)
               </label>
               <div className="relative mb-2">
-                <span className="absolute left-4 top-3 text-gray-500">$</span>
+                <span className="absolute left-4 top-3 text-gray-500 font-medium">
+                  {getCurrencySymbol(currentCountryCurrency)}
+                </span>
                 <input
                   type="number"
                   id="openingBalance"
@@ -193,14 +227,14 @@ export function CreateHOAForm({ onCancel, onCreate }) {
                   value={formData.openingBalance}
                   onChange={handleChange}
                   step="0.01"
-                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                  className="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
                   placeholder="0.00"
                 />
               </div>
               <p className="text-xs text-gray-600">
                 <span className="font-semibold">Taking over from previous management?</span><br />
                 Enter positive amount for surplus, negative for deficit.
-                Leave at $0 if starting fresh.
+                Leave empty if starting fresh.
               </p>
             </div>
 

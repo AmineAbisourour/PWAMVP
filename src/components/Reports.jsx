@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react';
-import { getFinancialSummaryEnhanced, getAllTransactions } from '../db/database';
+import { useState, useEffect } from "react";
+import {
+  getFinancialSummaryEnhanced,
+  getAllTransactions,
+} from "../db/database";
+import { formatCurrency } from "../utils/currency";
+import { getCurrencyForCountry, getLocaleForCountry } from "../utils/countries";
 
 export function Reports({ hoa }) {
+  const currency = getCurrencyForCountry(hoa.country);
+  const locale = getLocaleForCountry(hoa.country);
   const [summary, setSummary] = useState(null);
   const [monthlyBreakdown, setMonthlyBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +29,7 @@ export function Reports({ hoa }) {
       const breakdown = calculateMonthlyBreakdown(transactions);
       setMonthlyBreakdown(breakdown);
     } catch (error) {
-      console.error('Error loading reports:', error);
+      console.error("Error loading reports:", error);
     } finally {
       setLoading(false);
     }
@@ -33,7 +40,9 @@ export function Reports({ hoa }) {
 
     transactions.forEach((transaction) => {
       const date = new Date(transaction.createdAt);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
 
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = {
@@ -45,7 +54,7 @@ export function Reports({ hoa }) {
         };
       }
 
-      if (transaction.transactionType === 'contribution') {
+      if (transaction.transactionType === "contribution") {
         monthlyData[monthKey].contributions += transaction.amount;
         monthlyData[monthKey].contributionCount += 1;
       } else {
@@ -55,14 +64,15 @@ export function Reports({ hoa }) {
     });
 
     // Convert to array and sort by month (newest first)
-    return Object.values(monthlyData)
-      .sort((a, b) => b.month.localeCompare(a.month));
+    return Object.values(monthlyData).sort((a, b) =>
+      b.month.localeCompare(a.month)
+    );
   };
 
   const formatMonth = (monthKey) => {
-    const [year, month] = monthKey.split('-');
+    const [year, month] = monthKey.split("-");
     const date = new Date(year, parseInt(month) - 1);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
 
   if (loading) {
@@ -78,36 +88,66 @@ export function Reports({ hoa }) {
     <div className="max-w-6xl space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Financial Reports</h1>
-        <p className="text-gray-600">Overview of {hoa.name}'s financial performance</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Financial Reports
+        </h1>
+        <p className="text-gray-600">
+          Overview of {hoa.name}'s financial performance
+        </p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-600">Total Contributions</h3>
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <h3 className="text-sm font-semibold text-gray-600">
+              Total Contributions
+            </h3>
+            <svg
+              className="w-8 h-8 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <div className="text-3xl font-bold text-gray-900">
-            ${summary?.totalContributions?.toFixed(2) || '0.00'}
+            {formatCurrency(summary?.totalContributions, currency, locale)}
           </div>
           <div className="text-sm text-gray-500 mt-1">
-            {(summary?.regularContributionsCount || 0) + (summary?.specialAssessmentsCount || 0)} transactions
+            {(summary?.regularContributionsCount || 0) +
+              (summary?.specialAssessmentsCount || 0)}{" "}
+            transactions
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-600">Total Expenses</h3>
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            <h3 className="text-sm font-semibold text-gray-600">
+              Total Expenses
+            </h3>
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+              />
             </svg>
           </div>
           <div className="text-3xl font-bold text-gray-900">
-            ${summary?.totalExpenses?.toFixed(2) || '0.00'}
+            {formatCurrency(summary?.totalExpenses, currency, locale)}
           </div>
           <div className="text-sm text-gray-500 mt-1">
             {summary?.expenseCount || 0} transactions
@@ -117,41 +157,71 @@ export function Reports({ hoa }) {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-600">Net Balance</h3>
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <svg
+              className="w-8 h-8 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+              />
             </svg>
           </div>
-          <div className={`text-3xl font-bold ${
-            (summary?.netBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            ${summary?.netBalance?.toFixed(2) || '0.00'}
+          <div
+            className={`text-3xl font-bold ${
+              (summary?.netBalance || 0) >= 0
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {formatCurrency(summary?.netBalance, currency, locale)}
           </div>
           <div className="text-sm text-gray-500 mt-1">
-            {(summary?.netBalance || 0) >= 0 ? 'Surplus' : 'Deficit'}
+            {(summary?.netBalance || 0) >= 0 ? "Surplus" : "Deficit"}
           </div>
         </div>
       </div>
 
       {/* Contributions Breakdown */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Contributions Breakdown</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          Contributions Breakdown
+        </h2>
         <div className="space-y-4">
           {/* Regular Contributions */}
           <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
             <div className="flex items-center gap-3">
               <div className="bg-green-600 rounded-full p-2">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Regular Contributions</h3>
-                <p className="text-sm text-gray-600">Monthly contributions from units</p>
+                <h3 className="font-semibold text-gray-900">
+                  Regular Contributions
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Monthly contributions from units
+                </p>
               </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-green-600">
-                ${summary?.regularContributions?.toFixed(2) || '0.00'}
+                {formatCurrency(summary?.regularContributions, currency, locale)}
               </div>
               <div className="text-xs text-gray-500">
                 {summary?.regularContributionsCount || 0} transactions
@@ -163,18 +233,32 @@ export function Reports({ hoa }) {
           <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
             <div className="flex items-center gap-3">
               <div className="bg-purple-600 rounded-full p-2">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Special Assessments</h3>
-                <p className="text-sm text-gray-600">Extraordinary contributions for projects</p>
+                <h3 className="font-semibold text-gray-900">
+                  Special Assessments
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Extraordinary contributions for projects
+                </p>
               </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-purple-600">
-                ${summary?.specialAssessments?.toFixed(2) || '0.00'}
+                {formatCurrency(summary?.specialAssessments, currency, locale)}
               </div>
               <div className="text-xs text-gray-500">
                 {summary?.specialAssessmentsCount || 0} transactions
@@ -187,23 +271,41 @@ export function Reports({ hoa }) {
             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-600 rounded-full p-2">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Opening Balance</h3>
-                  <p className="text-sm text-gray-600">Initial balance from previous management</p>
+                  <h3 className="font-semibold text-gray-900">
+                    Opening Balance
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Initial balance from previous management
+                  </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className={`text-2xl font-bold ${
-                  (summary?.openingBalance || 0) >= 0 ? 'text-blue-600' : 'text-red-600'
-                }`}>
-                  {(summary?.openingBalance || 0) >= 0 ? '+' : ''}${summary?.openingBalance?.toFixed(2) || '0.00'}
+                <div
+                  className={`text-2xl font-bold ${
+                    (summary?.openingBalance || 0) >= 0
+                      ? "text-blue-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {formatCurrency(summary?.openingBalance || 0, currency, locale)}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {(summary?.openingBalance || 0) >= 0 ? 'Surplus' : 'Deficit'}
+                  {(summary?.openingBalance || 0) >= 0 ? "Surplus" : "Deficit"}
                 </div>
               </div>
             </div>
@@ -212,8 +314,12 @@ export function Reports({ hoa }) {
           {/* Total Breakdown Bar */}
           <div className="pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-semibold text-gray-700">Total Breakdown</span>
-              <span className="text-lg font-bold text-gray-900">${summary?.totalContributions?.toFixed(2) || '0.00'}</span>
+              <span className="text-sm font-semibold text-gray-700">
+                Total Breakdown
+              </span>
+              <span className="text-lg font-bold text-gray-900">
+                {formatCurrency(summary?.totalContributions || 0, currency, locale)}
+              </span>
             </div>
             <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden flex">
               {summary?.totalContributions > 0 && (
@@ -221,22 +327,51 @@ export function Reports({ hoa }) {
                   {summary.regularContributions > 0 && (
                     <div
                       className="bg-green-600 h-full"
-                      style={{ width: `${(summary.regularContributions / summary.totalContributions) * 100}%` }}
-                      title={`Regular: ${((summary.regularContributions / summary.totalContributions) * 100).toFixed(1)}%`}
+                      style={{
+                        width: `${
+                          (summary.regularContributions /
+                            summary.totalContributions) *
+                          100
+                        }%`,
+                      }}
+                      title={`Regular: ${(
+                        (summary.regularContributions /
+                          summary.totalContributions) *
+                        100
+                      ).toFixed(1)}%`}
                     ></div>
                   )}
                   {summary.specialAssessments > 0 && (
                     <div
                       className="bg-purple-600 h-full"
-                      style={{ width: `${(summary.specialAssessments / summary.totalContributions) * 100}%` }}
-                      title={`Special: ${((summary.specialAssessments / summary.totalContributions) * 100).toFixed(1)}%`}
+                      style={{
+                        width: `${
+                          (summary.specialAssessments /
+                            summary.totalContributions) *
+                          100
+                        }%`,
+                      }}
+                      title={`Special: ${(
+                        (summary.specialAssessments /
+                          summary.totalContributions) *
+                        100
+                      ).toFixed(1)}%`}
                     ></div>
                   )}
                   {summary.openingBalance > 0 && (
                     <div
                       className="bg-blue-600 h-full"
-                      style={{ width: `${(summary.openingBalance / summary.totalContributions) * 100}%` }}
-                      title={`Opening: ${((summary.openingBalance / summary.totalContributions) * 100).toFixed(1)}%`}
+                      style={{
+                        width: `${
+                          (summary.openingBalance /
+                            summary.totalContributions) *
+                          100
+                        }%`,
+                      }}
+                      title={`Opening: ${(
+                        (summary.openingBalance / summary.totalContributions) *
+                        100
+                      ).toFixed(1)}%`}
                     ></div>
                   )}
                 </>
@@ -245,18 +380,43 @@ export function Reports({ hoa }) {
             <div className="flex gap-4 mt-2 text-xs text-gray-600">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-green-600 rounded"></div>
-                <span>Regular ({summary?.totalContributions > 0 ? ((summary.regularContributions / summary.totalContributions) * 100).toFixed(1) : 0}%)</span>
+                <span>
+                  Regular (
+                  {summary?.totalContributions > 0
+                    ? (
+                        (summary.regularContributions /
+                          summary.totalContributions) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %)
+                </span>
               </div>
               {summary?.specialAssessments > 0 && (
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-purple-600 rounded"></div>
-                  <span>Special ({((summary.specialAssessments / summary.totalContributions) * 100).toFixed(1)}%)</span>
+                  <span>
+                    Special (
+                    {(
+                      (summary.specialAssessments /
+                        summary.totalContributions) *
+                      100
+                    ).toFixed(1)}
+                    %)
+                  </span>
                 </div>
               )}
               {summary?.openingBalance > 0 && (
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-blue-600 rounded"></div>
-                  <span>Opening ({((summary.openingBalance / summary.totalContributions) * 100).toFixed(1)}%)</span>
+                  <span>
+                    Opening (
+                    {(
+                      (summary.openingBalance / summary.totalContributions) *
+                      100
+                    ).toFixed(1)}
+                    %)
+                  </span>
                 </div>
               )}
             </div>
@@ -266,7 +426,9 @@ export function Reports({ hoa }) {
 
       {/* Monthly Breakdown */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Monthly Breakdown</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          Monthly Breakdown
+        </h2>
 
         {monthlyBreakdown.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -277,31 +439,46 @@ export function Reports({ hoa }) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Month</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Contributions</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Expenses</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Net</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Transactions</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                    Month
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                    Contributions
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                    Expenses
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                    Net
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                    Transactions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {monthlyBreakdown.map((month) => {
                   const net = month.contributions - month.expenses;
                   return (
-                    <tr key={month.month} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={month.month}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
                       <td className="py-3 px-4 text-gray-900 font-medium">
                         {formatMonth(month.month)}
                       </td>
                       <td className="py-3 px-4 text-right text-green-600 font-semibold">
-                        ${month.contributions.toFixed(2)}
+                        {formatCurrency(month.contributions, currency, locale)}
                       </td>
                       <td className="py-3 px-4 text-right text-red-600 font-semibold">
-                        ${month.expenses.toFixed(2)}
+                        {formatCurrency(month.expenses, currency, locale)}
                       </td>
-                      <td className={`py-3 px-4 text-right font-bold ${
-                        net >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        ${net.toFixed(2)}
+                      <td
+                        className={`py-3 px-4 text-right font-bold ${
+                          net >= 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {formatCurrency(net, currency, locale)}
                       </td>
                       <td className="py-3 px-4 text-right text-gray-600 text-sm">
                         {month.contributionCount + month.expenseCount}
@@ -321,16 +498,24 @@ export function Reports({ hoa }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="text-sm text-gray-600 mb-1">Number of Units</div>
-            <div className="text-2xl font-bold text-gray-900">{hoa.numberOfUnits}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {hoa.numberOfUnits}
+            </div>
           </div>
           <div>
-            <div className="text-sm text-gray-600 mb-1">Monthly Contribution Rate</div>
-            <div className="text-2xl font-bold text-gray-900">${hoa.monthlyContribution?.toFixed(2)}</div>
+            <div className="text-sm text-gray-600 mb-1">
+              Monthly Contribution Rate
+            </div>
+            <div className="text-2xl font-bold text-gray-900">
+              {formatCurrency(hoa.monthlyContribution, currency, locale)}
+            </div>
           </div>
           <div>
-            <div className="text-sm text-gray-600 mb-1">Expected Monthly Income</div>
+            <div className="text-sm text-gray-600 mb-1">
+              Expected Monthly Income
+            </div>
             <div className="text-2xl font-bold text-blue-600">
-              ${(hoa.numberOfUnits * hoa.monthlyContribution).toFixed(2)}
+              {formatCurrency(hoa.numberOfUnits * hoa.monthlyContribution, currency, locale)}
             </div>
           </div>
           <div>
@@ -340,15 +525,19 @@ export function Reports({ hoa }) {
                 <>
                   {(
                     (monthlyBreakdown[0].contributions /
-                    (hoa.numberOfUnits * hoa.monthlyContribution)) * 100
-                  ).toFixed(1)}%
+                      (hoa.numberOfUnits * hoa.monthlyContribution)) *
+                    100
+                  ).toFixed(1)}
+                  %
                 </>
               ) : (
-                'N/A'
+                "N/A"
               )}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {monthlyBreakdown.length > 0 ? formatMonth(monthlyBreakdown[0].month) : 'No data'}
+              {monthlyBreakdown.length > 0
+                ? formatMonth(monthlyBreakdown[0].month)
+                : "No data"}
             </div>
           </div>
         </div>

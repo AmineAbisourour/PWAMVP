@@ -53,6 +53,7 @@ export async function initDB() {
 export async function createHOA(hoaData) {
   const db = await initDB();
   const hoa = {
+    country: 'MA', // Default country (Morocco)
     ...hoaData,
     createdAt: new Date().toISOString(),
   };
@@ -323,22 +324,10 @@ export async function addBulkSpecialAssessment(assessmentData) {
   return Promise.all(promises);
 }
 
-// Add opening balance as a special contribution
-export async function addOpeningBalance(hoaId, amount) {
-  // Opening balance is recorded as a special contribution without a unit number
-  return addContribution({
-    hoaId,
-    unitNumber: 0, // Special marker for opening balance
-    contributionType: 'opening',
-    purpose: 'Opening Balance',
-    amount,
-    startMonth: new Date().toISOString().slice(0, 7),
-    paymentStatus: 'paid', // Opening balance is always "paid" (it's a starting point)
-    receiptDelivered: true,
-  });
-}
+// Note: Opening balance is now stored as a property of the HOA record (hoa.openingBalance)
+// This function has been removed as opening balance is no longer a contribution
 
-// Get all special assessments for a HOA (excluding opening balance)
+// Get all special assessments for a HOA
 export async function getSpecialAssessments(hoaId) {
   const contributions = await getContributionsByHOA(hoaId);
   return contributions.filter(c => c.contributionType === 'special');
@@ -388,9 +377,8 @@ export async function getRegularContributions(hoaId) {
 
 // Get opening balance for a HOA
 export async function getOpeningBalance(hoaId) {
-  const contributions = await getContributionsByHOA(hoaId);
-  const openingBalanceRecord = contributions.find(c => c.contributionType === 'opening');
-  return openingBalanceRecord ? openingBalanceRecord.amount : 0;
+  const hoa = await getHOAById(hoaId);
+  return hoa?.openingBalance || 0;
 }
 
 // ==========================================
@@ -436,7 +424,8 @@ export async function getFinancialSummary(hoaId) {
 
 // Get enhanced financial summary with breakdown by contribution type
 export async function getFinancialSummaryEnhanced(hoaId) {
-  const [contributions, expenses] = await Promise.all([
+  const [hoa, contributions, expenses] = await Promise.all([
+    getHOAById(hoaId),
     getContributionsByHOA(hoaId),
     getExpensesByHOA(hoaId),
   ]);
@@ -444,11 +433,10 @@ export async function getFinancialSummaryEnhanced(hoaId) {
   // Separate contributions by type
   const regularContributions = contributions.filter(c => !c.contributionType || c.contributionType === 'regular');
   const specialAssessments = contributions.filter(c => c.contributionType === 'special');
-  const openingBalance = contributions.find(c => c.contributionType === 'opening');
 
   const regularTotal = regularContributions.reduce((sum, c) => sum + c.amount, 0);
   const specialTotal = specialAssessments.reduce((sum, c) => sum + c.amount, 0);
-  const openingBalanceAmount = openingBalance ? openingBalance.amount : 0;
+  const openingBalanceAmount = hoa?.openingBalance || 0;
   const totalContributions = regularTotal + specialTotal + openingBalanceAmount;
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -485,8 +473,12 @@ export async function getAllTransactions(hoaId) {
     getExpensesByHOA(hoaId),
   ]);
 
+  // Filter out old opening balance contributions (for backward compatibility)
+  // Opening balance is now stored as a property of the HOA record
+  const filteredContributions = contributions.filter(c => c.contributionType !== 'opening');
+
   // Add transactionType field to differentiate between contributions and expenses
-  const contributionsWithType = contributions.map(c => ({
+  const contributionsWithType = filteredContributions.map(c => ({
     ...c,
     transactionType: 'contribution',
     // Ensure status fields have defaults for existing records
@@ -542,6 +534,7 @@ export async function loadDemoData() {
     address: '123 Valley View Drive, Sunset City, CA 94000',
     numberOfUnits: 50,
     monthlyContribution: 250,
+    country: 'MA',
     isDemo: true,
   });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData, addOpeningBalance } from './db/database';
+import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData } from './db/database';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
@@ -9,6 +9,7 @@ import { Sidebar } from './components/Sidebar';
 import { HOASettings } from './components/HOASettings';
 import { Reports } from './components/Reports';
 import { SpecialAssessmentsPage } from './components/SpecialAssessmentsPage';
+import { SplashScreen } from './components/SplashScreen';
 
 function App() {
   const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'
@@ -50,14 +51,8 @@ function App() {
 
   const handleHOACreate = async (hoaData) => {
     try {
-      const { openingBalance, ...hoaDetails } = hoaData;
-      const id = await createHOA(hoaDetails);
-
-      // If opening balance is provided and non-zero, create an opening balance record
-      if (openingBalance && openingBalance !== 0) {
-        await addOpeningBalance(id, openingBalance);
-      }
-
+      // Opening balance is now stored directly in the HOA record
+      const id = await createHOA(hoaData);
       const newHOA = await getHOAById(id);
       setCurrentHOA(newHOA);
       setCurrentView('dashboard');
@@ -117,14 +112,7 @@ function App() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   // Views that don't need sidebar

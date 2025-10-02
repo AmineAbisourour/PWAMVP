@@ -1,8 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getAllTransactions, deleteContribution, deleteExpense, clearAllTransactions, bulkUpdatePaymentStatus, bulkUpdateReceiptStatus } from '../db/database';
 import { TransactionDetailModal } from './TransactionDetailModal';
+import { formatCurrency } from '../utils/currency';
+import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
 export function TransactionsPage({ hoa, onBack }) {
+  const currency = getCurrencyForCountry(hoa.country);
+  const locale = getLocaleForCountry(hoa.country);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -572,7 +576,7 @@ export function TransactionsPage({ hoa, onBack }) {
                     <div className={`text-xl font-bold ${
                       transaction.transactionType === 'contribution' ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      ${transaction.amount.toFixed(2)}
+                      {formatCurrency(transaction.amount, currency, locale)}
                     </div>
                   </div>
                 </div>
@@ -691,6 +695,7 @@ export function TransactionsPage({ hoa, onBack }) {
       {selectedTransaction && (
         <TransactionDetailModal
           transaction={selectedTransaction}
+          hoa={hoa}
           onClose={() => setSelectedTransaction(null)}
           onUpdate={loadTransactions}
         />

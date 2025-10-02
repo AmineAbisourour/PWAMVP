@@ -5,8 +5,12 @@ import { AddExpenseForm } from './AddExpenseForm';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
 import { TransactionDetailModal } from './TransactionDetailModal';
 import { getAllTransactions, addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
+import { formatCurrency } from '../utils/currency';
+import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
 export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
+  const currency = getCurrencyForCountry(hoa.country);
+  const locale = getLocaleForCountry(hoa.country);
   const {
     financialSummary,
     loading,
@@ -222,7 +226,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
           <div className={`text-5xl md:text-6xl font-bold mb-3 ${
             financialSummary.netBalance >= 0 ? 'text-white' : 'text-red-300'
           }`}>
-            {loading ? '...' : `${financialSummary.netBalance >= 0 ? '' : '-'}$${Math.abs(financialSummary.netBalance).toFixed(2)}`}
+            {loading ? '...' : formatCurrency(financialSummary.netBalance, currency, locale)}
           </div>
           <div className="flex items-center gap-4 text-blue-100">
             <div className="flex items-center gap-2">
@@ -230,7 +234,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               <span className="text-sm">
-                ${loading ? '...' : financialSummary.totalContributions.toFixed(2)} Contributions
+                {loading ? '...' : formatCurrency(financialSummary.totalContributions, currency, locale)} Contributions
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -238,7 +242,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
               <span className="text-sm">
-                ${loading ? '...' : financialSummary.totalExpenses.toFixed(2)} Expenses
+                {loading ? '...' : formatCurrency(financialSummary.totalExpenses, currency, locale)} Expenses
               </span>
             </div>
           </div>
@@ -418,7 +422,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Total</span>
-                        <span className="font-semibold">${assessment.totalAmount.toFixed(2)}</span>
+                        <span className="font-semibold">{formatCurrency(assessment.totalAmount, currency, locale)}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
@@ -427,8 +431,8 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                         ></div>
                       </div>
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>Collected: ${assessment.paidAmount.toFixed(2)}</span>
-                        <span>Pending: ${assessment.pendingAmount.toFixed(2)}</span>
+                        <span>Collected: {formatCurrency(assessment.paidAmount, currency, locale)}</span>
+                        <span>Pending: {formatCurrency(assessment.pendingAmount, currency, locale)}</span>
                       </div>
                     </div>
                   </div>
@@ -516,7 +520,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                       <div className={`text-lg font-bold ${
                         transaction.transactionType === 'contribution' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        ${transaction.amount.toFixed(2)}
+                        {formatCurrency(transaction.amount, currency, locale)}
                       </div>
                       <div className="text-xs text-gray-400">
                         {new Date(transaction.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -540,6 +544,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
 
       {showExpenseForm && (
         <AddExpenseForm
+          hoa={hoa}
           onCancel={() => setShowExpenseForm(false)}
           onCreate={handleCreateExpense}
         />
@@ -556,6 +561,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
       {selectedTransaction && (
         <TransactionDetailModal
           transaction={selectedTransaction}
+          hoa={hoa}
           onClose={() => setSelectedTransaction(null)}
           onUpdate={handleTransactionUpdate}
         />
