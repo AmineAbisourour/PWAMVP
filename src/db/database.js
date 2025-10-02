@@ -404,26 +404,9 @@ export async function getNetBalance(hoaId) {
   return totalContributions - totalExpenses;
 }
 
-// Get financial summary for a specific HOA
+// Get financial summary with breakdown by contribution type
+// This is the single source of truth for all financial calculations
 export async function getFinancialSummary(hoaId) {
-  const [totalContributions, totalExpenses, contributions, expenses] = await Promise.all([
-    getTotalContributions(hoaId),
-    getTotalExpenses(hoaId),
-    getContributionsByHOA(hoaId),
-    getExpensesByHOA(hoaId),
-  ]);
-
-  return {
-    totalContributions,
-    totalExpenses,
-    netBalance: totalContributions - totalExpenses,
-    contributionsCount: contributions.length,
-    expensesCount: expenses.length,
-  };
-}
-
-// Get enhanced financial summary with breakdown by contribution type
-export async function getFinancialSummaryEnhanced(hoaId) {
   const [hoa, contributions, expenses] = await Promise.all([
     getHOAById(hoaId),
     getContributionsByHOA(hoaId),

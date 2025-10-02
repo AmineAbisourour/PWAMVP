@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  getFinancialSummaryEnhanced,
+  getFinancialSummary,
   getAllTransactions,
 } from "../db/database";
 import { formatCurrency } from "../utils/currency";
@@ -20,8 +20,8 @@ export function Reports({ hoa }) {
   const loadReports = async () => {
     try {
       setLoading(true);
-      // Get enhanced financial summary with breakdown
-      const financialSummary = await getFinancialSummaryEnhanced(hoa.id);
+      // Get financial summary with breakdown
+      const financialSummary = await getFinancialSummary(hoa.id);
       setSummary(financialSummary);
 
       // Get all transactions for monthly breakdown
