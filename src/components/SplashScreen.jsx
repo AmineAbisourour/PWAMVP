@@ -37,36 +37,6 @@ export function SplashScreen() {
         {/* Loading Text */}
         <p className="text-blue-100 mt-4 text-sm">Loading your HOA data...</p>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes bounce-slow {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out;
-        }
-
-        .animate-bounce-slow {
-          animation: bounce-slow 2s infinite;
-        }
-      `}</style>
     </div>
   );
 }
