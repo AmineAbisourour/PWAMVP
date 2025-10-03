@@ -1,13 +1,19 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
 
     <!-- Primary Meta Tags -->
     <title>HOA Management</title>
     <meta name="title" content="HOA Management" />
-    <meta name="description" content="Offline-ready HOA management Progressive Web App for tracking contributions and expenses" />
+    <meta
+      name="description"
+      content="Offline-ready HOA management Progressive Web App for tracking contributions and expenses"
+    />
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -17,10 +23,26 @@
 
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="120x120"
+      href="/apple-touch-icon-120x120.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="152x152"
+      href="/apple-touch-icon-152x152.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="167x167"
+      href="/apple-touch-icon-167x167.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/apple-touch-icon-180x180.png"
+    />
 
     <!-- Safari Pinned Tab -->
     <link rel="mask-icon" href="/mask-icon.svg" color="#2563eb" />
@@ -32,7 +54,10 @@
 
     <!-- Apple-Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="HOA PWA" />
     <meta name="format-detection" content="telephone=no" />
 
@@ -125,7 +150,8 @@
       }
 
       @keyframes bounceIcon {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateY(0);
         }
         50% {
@@ -138,15 +164,21 @@
           transform: rotate(360deg);
         }
       }
+
+      body {
+        margin: 0;
+      }
     </style>
   </head>
-  <body style="margin: 0;">
+  <body>
     <!-- Initial HTML splash screen (shows immediately) -->
     <div id="initial-loader">
       <div class="loader-content">
         <div class="loader-icon">
           <svg viewBox="0 0 24 24">
-            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <path
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
           </svg>
         </div>
         <h1 class="loader-title">HOA Manager</h1>
