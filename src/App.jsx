@@ -10,12 +10,10 @@ import { Sidebar } from './components/Sidebar';
 import { HOASettings } from './components/HOASettings';
 import { Reports } from './components/Reports';
 import { SpecialAssessmentsPage } from './components/SpecialAssessmentsPage';
-import { SplashScreen } from './components/SplashScreen';
 
 function App() {
   const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'
   const [currentHOA, setCurrentHOA] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Register service worker for PWA updates
@@ -64,8 +62,13 @@ function App() {
         console.error('Error checking for HOA:', error);
         setCurrentView('landing');
       } finally {
-        // Remove splash screen after all checks complete
-        setLoading(false);
+        // Remove HTML splash screen after all checks complete
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(() => loader.remove(), 300);
+        }
       }
     }
 
@@ -115,7 +118,6 @@ function App() {
 
   const handleLoadDemo = async () => {
     try {
-      setLoading(true);
       const id = await loadDemoData();
       const demoHOA = await getHOAById(id);
       setCurrentHOA(demoHOA);
@@ -123,28 +125,19 @@ function App() {
     } catch (error) {
       console.error('Error loading demo data:', error);
       alert('Failed to load demo data. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleExitDemo = async () => {
     try {
-      setLoading(true);
       await clearDemoData();
       setCurrentHOA(null);
       setCurrentView('landing');
     } catch (error) {
       console.error('Error exiting demo mode:', error);
       alert('Failed to exit demo mode. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
-
-  if (loading) {
-    return <SplashScreen />;
-  }
 
   // Views that don't need sidebar
   const isAuthView = ['dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'].includes(currentView);
