@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData } from './db/database';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LandingPage } from './components/LandingPage';
@@ -17,23 +18,53 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Check if HOA exists on mount
+  // Register service worker for PWA updates
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(registration) {
+      // Check for updates when app loads
+      if (registration) {
+        registration.update();
+      }
+    },
+    onRegisterError(error) {
+      console.error('Service worker registration error:', error);
+    },
+  });
+
+  // Check for user-created HOA on mount with connectivity and update checks
   useEffect(() => {
     async function checkForHOA() {
       try {
-        const hoas = await getAllHOAs();
-        if (hoas.length > 0) {
-          // HOA exists, go to dashboard
-          setCurrentHOA(hoas[0]); // Use the first HOA
+        // 1. Check connectivity
+        const isOnline = navigator.onLine;
+        console.log('Connectivity status:', isOnline ? 'Online' : 'Offline');
+
+        // 2. If online, service worker update check is triggered automatically via onRegistered
+        // The service worker will update in the background
+
+        // 3. Check database for NON-DEMO HOAs only (user-created data)
+        const allHOAs = await getAllHOAs();
+        const userCreatedHOAs = allHOAs.filter(hoa => !hoa.isDemo);
+
+        console.log('Database check - Total HOAs:', allHOAs.length, 'User-created:', userCreatedHOAs.length);
+
+        if (userCreatedHOAs.length > 0) {
+          // User-created HOA exists, go to dashboard
+          setCurrentHOA(userCreatedHOAs[0]);
           setCurrentView('dashboard');
         } else {
-          // No HOA, show landing page
+          // No user-created HOA, show landing page
+          // (User can create new or load demo from landing page)
           setCurrentView('landing');
         }
       } catch (error) {
         console.error('Error checking for HOA:', error);
         setCurrentView('landing');
       } finally {
+        // Remove splash screen after all checks complete
         setLoading(false);
       }
     }

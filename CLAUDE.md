@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Progressive Web App (PWA) for Homeowner Association (HOA) management with offline-first capabilities. The app is built with React + Vite and uses IndexedDB for local data storage.
+This is a **mobile-first** Progressive Web App (PWA) for Homeowner Association (HOA) management with offline-first capabilities. The app is built with React + Vite and uses IndexedDB for local data storage.
+
+**IMPORTANT**: This app is designed with a mobile-first approach. All UI components, layouts, and interactions are optimized for mobile devices first, then enhanced for larger screens. Always consider mobile viewports, touch interactions, and thumb-friendly button placement when making changes.
 
 ## Development Commands
 
@@ -26,28 +28,52 @@ node generate-icons.js  # Regenerate PWA icons from SVG templates
   - Indexes created on: `hoaId`, `unitNumber`, `startMonth`, `createdAt`, `type`
 
 ### React Hooks Pattern
-- **useFinancials**: Primary hook for financial data management (contributions & expenses)
-  - Fetches and manages contributions and expenses for a specific HOA
-  - Provides CRUD operations: `createContribution`, `createExpense`, `removeContribution`, `removeExpense`
+- **useTransactions** (`src/hooks/useTransactions.js`): **Unified hook for all transaction operations**
+  - Single source of truth for contributions and expenses
+  - Provides complete transaction data: `transactions`, `contributions`, `expenses`, `financialSummary`
+  - CRUD operations with consistent naming:
+    - `addContribution`, `addExpense` - Create new transactions
+    - `updateContribution`, `updateExpense` - Update existing transactions with **optimistic updates**
+    - `deleteContribution`, `deleteExpense` - Delete transactions
+  - **Optimistic updates**: UI updates instantly, then syncs with database in background
   - Auto-calculates financial summary (totals, net balance, counts)
   - Data is automatically sorted by `createdAt` (newest first)
+  - Provides `refresh()` method for manual reloads
+  - Error handling with automatic rollback on optimistic update failures
 
 - **useOnlineStatus**: Monitors network connectivity for offline features
-- **useIndexedDB**: Legacy/generic hook (not actively used in current implementation)
+
+**IMPORTANT**: Always use `useTransactions` hook for transaction operations. Never import database functions directly in components.
 
 ### Component Structure
-- **App.jsx**: Main router that handles view state (`landing`, `create`, `dashboard`)
+- **App.jsx**: Main router that handles view state (`landing`, `create`, `dashboard`, `transactions`)
   - Checks for existing HOA on mount
   - Single-HOA system (uses first HOA found)
+  - Mobile-first navigation and layout
 
 - **Dashboard.jsx**: Main interface showing financial summary and recent activity
-  - Displays 3 summary cards: Total Contributions, Total Expenses, Net Balance
-  - Shows recent contributions and expenses (limited to 10 items each)
-  - Contains add/delete functionality for both contributions and expenses
+  - Uses `useTransactions` hook for unified transaction management
+  - Displays prominent Net Balance card with surplus/deficit indicator
+  - Shows 4 quick stats: Collection Rate (monthly/yearly/overall), Pending Contributions, Pending Expenses, Outstanding Receipts
+  - Recent Activity section shows last 5 transactions with inline action buttons
+  - **Mobile-first inline actions**: Toggle payment status, mark receipt delivered, delete - no modals
+  - Quick action buttons for adding contributions, expenses, and special assessments
+  - Special assessments summary with progress tracking
+
+- **TransactionsPage.jsx**: Complete transaction history view with grouping
+  - Uses `useTransactions` hook with optimistic updates
+  - Three tabs: All, Contributions (grouped by month), Expenses (grouped by type)
+  - Inline action buttons for quick updates (same pattern as Dashboard)
+  - Expandable groups for organized viewing
+  - Mobile-optimized with responsive grid layouts
 
 - **AddContributionForm.jsx** & **AddExpenseForm.jsx**: Modal forms for creating transactions
-- **CreateHOAForm.jsx**: Initial setup form for HOA details
-- **LandingPage.jsx**: Entry screen when no HOA exists
+  - Mobile-friendly full-screen modals on small screens
+  - Touch-optimized inputs and buttons
+
+- **AddSpecialAssessmentForm.jsx**: Bulk special assessment creation
+- **CreateHOAForm.jsx**: Initial setup form for HOA details with country/currency support
+- **LandingPage.jsx**: Entry screen when no HOA exists with demo mode option
 - **OfflineIndicator.jsx**: Shows connection status
 
 ### PWA Configuration
@@ -84,15 +110,39 @@ node generate-icons.js  # Regenerate PWA icons from SVG templates
 
 ## Key Implementation Details
 
-1. **Financial Calculations**: Performed in `database.js` via helper functions (`getTotalContributions`, `getTotalExpenses`, `getNetBalance`, `getFinancialSummary`)
+1. **Unified Transaction Management**:
+   - All transaction operations go through `useTransactions` hook
+   - Optimistic updates provide instant UI feedback
+   - Single source of truth eliminates state inconsistencies
+   - Never import database functions directly in components
 
-2. **Multi-month Contributions**: The `AddContributionForm` can calculate amounts for multiple months automatically based on the HOA's `monthlyContribution` rate
+2. **Financial Calculations**: Performed in `database.js` via helper functions (`getTotalContributions`, `getTotalExpenses`, `getNetBalance`, `getFinancialSummary`)
 
-3. **Date Handling**: Uses ISO strings for storage, formatted for display using `toLocaleDateString()`
+3. **Multi-month Contributions**: The `AddContributionForm` can calculate amounts for multiple months automatically based on the HOA's `monthlyContribution` rate
 
-4. **Styling**: Tailwind CSS with custom utilities (including `safe-area-inset` for mobile devices)
+4. **Special Assessments**: Bulk creation system for one-time charges across multiple units with purpose tracking and collection rate monitoring
 
-5. **State Management**: Local component state + custom hooks pattern (no Redux/Context)
+5. **Date Handling**: Uses ISO strings for storage, formatted for display using `toLocaleDateString()`
+
+6. **Internationalization**:
+   - Currency support for multiple countries (USD, EUR, GBP, etc.)
+   - Locale-aware number and date formatting
+   - Country selection in HOA setup
+
+7. **Mobile-First Styling**:
+   - Tailwind CSS with mobile-first breakpoints (default → sm → md → lg → xl)
+   - Custom utilities including `safe-area-inset` for notched devices
+   - Touch-optimized button sizes (min 44x44px touch targets)
+   - Responsive grid layouts with mobile-first column counts
+   - Full-screen modals on mobile, centered dialogs on desktop
+
+8. **State Management**: Local component state + custom hooks pattern (no Redux/Context)
+
+9. **Transaction UI Pattern**:
+   - Inline action buttons (not modals) for quick updates
+   - Color-coded transactions: green for contributions, red for expenses
+   - Status badges: payment status and receipt delivery
+   - Consistent interaction across Dashboard and TransactionsPage
 
 ## PWA Deployment
 
@@ -112,3 +162,37 @@ npm run build     # Build for production
 npm run preview   # Test locally
 # Then deploy dist/ folder to your hosting platform
 ```
+
+## Development Guidelines
+
+### 1. Mobile-First Approach
+- **Always design for mobile screens first** (320px-768px)
+- Test on small viewports before desktop
+- Use responsive breakpoints to enhance for larger screens
+- Touch targets must be at least 44x44px
+- Consider one-handed mobile usage patterns
+- Optimize for thumb-reach zones on mobile devices
+
+### 2. Transaction Operations
+- **ALWAYS use `useTransactions` hook** for CRUD operations
+- **NEVER import database functions directly** in components
+- Leverage optimistic updates for instant UI feedback
+- Handle errors gracefully with user-friendly messages
+- Avoid manual `refresh()` calls - hook handles updates automatically
+
+### 3. Component Patterns
+- Keep components focused and single-purpose
+- **Use inline actions instead of modals** when possible for better mobile UX
+- Maintain consistent styling across similar components
+- Follow existing color coding:
+  - Green = contributions/income
+  - Red = expenses
+  - Blue = informational/receipts
+  - Purple = special assessments
+- Use consistent spacing and padding with Tailwind utilities
+
+### 4. State Management
+- Use custom hooks for shared logic
+- Keep local state in components when possible
+- Avoid prop drilling - consider hook composition
+- Never mix database calls with component logic

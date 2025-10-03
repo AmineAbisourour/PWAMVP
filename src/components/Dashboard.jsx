@@ -3,8 +3,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { AddContributionForm } from './AddContributionForm';
 import { AddExpenseForm } from './AddExpenseForm';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
-import { TransactionDetailModal } from './TransactionDetailModal';
-import { getAllTransactions, addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
+import { addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
 import { formatCurrency } from '../utils/currency';
 import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
@@ -12,19 +11,22 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   const currency = getCurrencyForCountry(hoa.country);
   const locale = getLocaleForCountry(hoa.country);
   const {
+    transactions,
     financialSummary,
     loading,
     addContribution,
     addExpense,
+    updateContribution,
+    updateExpense,
+    deleteContribution,
+    deleteExpense,
     refresh,
   } = useTransactions(hoa.id);
 
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showSpecialAssessmentForm, setShowSpecialAssessmentForm] = useState(false);
-  const [transactions, setTransactions] = useState([]);
   const [specialAssessments, setSpecialAssessments] = useState([]);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [collectionRateMode, setCollectionRateMode] = useState('overall'); // 'monthly', 'yearly', 'overall'
   const [quickStats, setQuickStats] = useState({
     collectionRate: 0,
@@ -34,22 +36,12 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   });
 
   useEffect(() => {
-    loadTransactions();
     loadSpecialAssessments();
   }, [hoa.id]);
 
   useEffect(() => {
     calculateQuickStats();
   }, [transactions, hoa, financialSummary, collectionRateMode]);
-
-  const loadTransactions = async () => {
-    try {
-      const data = await getAllTransactions(hoa.id);
-      setTransactions(data);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    }
-  };
 
   const loadSpecialAssessments = async () => {
     try {
@@ -143,20 +135,17 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   const handleCreateContribution = async (data) => {
     await addContribution(data);
     setShowContributionForm(false);
-    loadTransactions();
   };
 
   const handleCreateExpense = async (data) => {
     await addExpense(data);
     setShowExpenseForm(false);
-    loadTransactions();
   };
 
   const handleCreateSpecialAssessment = async (data) => {
     try {
       await addBulkSpecialAssessment(data);
       setShowSpecialAssessmentForm(false);
-      loadTransactions();
       loadSpecialAssessments();
       refresh();
     } catch (error) {
@@ -165,9 +154,41 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
     }
   };
 
-  const handleTransactionUpdate = () => {
-    loadTransactions();
-    refresh();
+  const handleTogglePaymentStatus = async (transaction) => {
+    try {
+      const newStatus = transaction.paymentStatus === 'paid' ? 'pending' : 'paid';
+      if (transaction.transactionType === 'contribution') {
+        await updateContribution(transaction.id, { paymentStatus: newStatus });
+      } else {
+        await updateExpense(transaction.id, { paymentStatus: newStatus });
+      }
+    } catch (error) {
+      alert('Failed to update payment status. Please try again.');
+    }
+  };
+
+  const handleToggleReceiptStatus = async (contribution) => {
+    try {
+      await updateContribution(contribution.id, {
+        receiptDelivered: !contribution.receiptDelivered
+      });
+    } catch (error) {
+      alert('Failed to update receipt status. Please try again.');
+    }
+  };
+
+  const handleDelete = async (transaction) => {
+    if (!confirm(`Delete this ${transaction.transactionType}?`)) return;
+
+    try {
+      if (transaction.transactionType === 'contribution') {
+        await deleteContribution(transaction.id);
+      } else {
+        await deleteExpense(transaction.id);
+      }
+    } catch (error) {
+      alert('Failed to delete transaction. Please try again.');
+    }
   };
 
   const formatMonthRange = (startMonth, endMonth) => {
@@ -479,15 +500,18 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
           ) : (
             <div className="space-y-2">
               {transactions.slice(0, 5).map((transaction) => (
-                <button
+                <div
                   key={`${transaction.transactionType}-${transaction.id}`}
-                  onClick={() => setSelectedTransaction(transaction)}
-                  className="w-full text-left border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:bg-gray-50 transition-all"
+                  className={`border-2 rounded-lg p-3 transition-all ${
+                    transaction.transactionType === 'contribution'
+                      ? 'border-green-200 bg-green-50'
+                      : 'border-red-200 bg-red-50'
+                  }`}
                 >
-                  <div className="flex justify-between items-center gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${
+                        <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
                           transaction.transactionType === 'contribution' ? 'bg-green-600' : 'bg-red-600'
                         }`}></span>
                         <span className="font-semibold text-gray-900">
@@ -495,39 +519,65 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
                             ? `Unit ${transaction.unitNumber}`
                             : transaction.type}
                         </span>
-                        {transaction.paymentStatus === 'paid' ? (
-                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                            Paid
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            Pending
-                          </span>
-                        )}
-                        {transaction.transactionType === 'contribution' && transaction.receiptDelivered && (
-                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Receipt ✓
-                          </span>
-                        )}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 mb-2">
                         {transaction.transactionType === 'contribution'
                           ? formatMonthRange(transaction.startMonth, transaction.endMonth)
                           : transaction.description || 'No description'}
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className={`text-lg font-bold ${
-                        transaction.transactionType === 'contribution' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {formatCurrency(transaction.amount, currency, locale)}
-                      </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 mb-3">
                         {new Date(transaction.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePaymentStatus(transaction);
+                          }}
+                          className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors ${
+                            transaction.paymentStatus === 'paid'
+                              ? 'bg-green-200 text-green-800 hover:bg-green-300'
+                              : 'bg-orange-200 text-orange-800 hover:bg-orange-300'
+                          }`}
+                        >
+                          {transaction.paymentStatus === 'paid' ? '✓ Paid' : 'Mark Paid'}
+                        </button>
+                        {transaction.transactionType === 'contribution' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleReceiptStatus(transaction);
+                            }}
+                            className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors ${
+                              transaction.receiptDelivered
+                                ? 'bg-blue-200 text-blue-800 hover:bg-blue-300'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {transaction.receiptDelivered ? '✓ Receipt' : 'Mark Receipt'}
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(transaction);
+                          }}
+                          className="text-xs px-2 py-1 text-red-600 hover:text-red-700 hover:bg-red-100 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className={`text-lg font-bold flex-shrink-0 ${
+                      transaction.transactionType === 'contribution' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(transaction.amount, currency, locale)}
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -555,15 +605,6 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
           hoa={hoa}
           onCancel={() => setShowSpecialAssessmentForm(false)}
           onCreate={handleCreateSpecialAssessment}
-        />
-      )}
-
-      {selectedTransaction && (
-        <TransactionDetailModal
-          transaction={selectedTransaction}
-          hoa={hoa}
-          onClose={() => setSelectedTransaction(null)}
-          onUpdate={handleTransactionUpdate}
         />
       )}
     </div>
