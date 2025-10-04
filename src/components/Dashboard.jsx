@@ -205,7 +205,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
   };
 
   return (
-    <div className="pb-6 max-w-4xl mx-auto">
+    <>
         {/* Demo Mode Banner */}
         {hoa.isDemo && (
           <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl shadow-lg p-4 mb-6">
@@ -607,6 +607,6 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
           onCreate={handleCreateSpecialAssessment}
         />
       )}
-    </div>
+    </>
   );
 }

@@ -159,7 +159,7 @@ export function HOASettings({ hoa, onUpdate }) {
   };
 
   return (
-    <div className="max-w-2xl">
+    <>
       {/* Form Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
         <div className="mb-6">
@@ -552,6 +552,6 @@ export function HOASettings({ hoa, onUpdate }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

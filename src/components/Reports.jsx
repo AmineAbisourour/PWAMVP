@@ -85,7 +85,7 @@ export function Reports({ hoa }) {
   }
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <>
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -542,6 +542,6 @@ export function Reports({ hoa }) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
