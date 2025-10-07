@@ -34,7 +34,7 @@ export function Sidebar({ currentView, onNavigate, hoa, isOpen, onToggle }) {
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-transparent backdrop-grayscale-40 backdrop-blur-[2px] z-40 md:hidden"
           onClick={onToggle}
         />
       )}

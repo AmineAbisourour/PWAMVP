@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTransactions } from '../hooks/useTransactions';
-import { AddContributionForm } from './AddContributionForm';
+import { AddContributionWizard } from './AddContributionWizard';
 import { AddExpenseForm } from './AddExpenseForm';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
 import { addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
@@ -585,7 +585,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
 
       {/* Modals */}
       {showContributionForm && (
-        <AddContributionForm
+        <AddContributionWizard
           hoa={hoa}
           onCancel={() => setShowContributionForm(false)}
           onCreate={handleCreateContribution}
