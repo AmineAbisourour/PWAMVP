@@ -21,11 +21,21 @@ node generate-icons.js  # Regenerate PWA icons from SVG templates
 ## Architecture
 
 ### Data Storage Layer
-- **IndexedDB Database**: `src/db/database.js` contains all database operations
+- **IndexedDB Database**: Modular database structure in `src/db/` directory
+  - **`init.js`**: Database initialization and schema migrations
+  - **`constants.js`**: All database constants, enums, and error messages
+  - **`hoa.js`**: HOA CRUD operations
+  - **`contributions.js`**: Contributions CRUD + rate history management + special assessments
+  - **`expenses.js`**: Expenses CRUD operations
+  - **`transactions.js`**: Unified transaction queries (contributions + expenses)
+  - **`financials.js`**: Financial calculations and summaries
+  - **`bulk.js`**: Bulk update operations
+  - **`demo.js`**: Demo data loading and clearing
   - Three object stores: `hoas`, `contributions`, `expenses`
-  - Database version: 2
+  - Database version: 4
   - All database operations are async and return promises
   - Indexes created on: `hoaId`, `unitNumber`, `startMonth`, `createdAt`, `type`
+  - **Import directly from specific modules** (e.g., `import { createHOA } from './db/hoa'`)
 
 ### React Hooks Pattern
 - **useTransactions** (`src/hooks/useTransactions.js`): **Unified hook for all transaction operations**
@@ -116,7 +126,7 @@ node generate-icons.js  # Regenerate PWA icons from SVG templates
    - Single source of truth eliminates state inconsistencies
    - Never import database functions directly in components
 
-2. **Financial Calculations**: Performed in `database.js` via helper functions (`getTotalContributions`, `getTotalExpenses`, `getNetBalance`, `getFinancialSummary`)
+2. **Financial Calculations**: Performed in `src/db/financials.js` via dedicated functions (`getTotalContributions`, `getTotalExpenses`, `getNetBalance`, `getFinancialSummary`)
 
 3. **Multi-month Contributions**: The `AddContributionForm` can calculate amounts for multiple months automatically based on the HOA's `monthlyContribution` rate
 
@@ -196,3 +206,18 @@ npm run preview   # Test locally
 - Keep local state in components when possible
 - Avoid prop drilling - consider hook composition
 - Never mix database calls with component logic
+
+### 5. Database Operations
+- Database functions are organized into modular files by domain
+- **Always import directly from specific modules** (not from a central file)
+  - HOA operations: `import { createHOA, updateHOA } from './db/hoa'`
+  - Contributions: `import { addContribution } from './db/contributions'`
+  - Expenses: `import { addExpense } from './db/expenses'`
+  - Transactions: `import { getAllTransactions } from './db/transactions'`
+  - Financials: `import { getFinancialSummary } from './db/financials'`
+  - Bulk operations: `import { bulkUpdatePaymentStatus } from './db/bulk'`
+  - Demo data: `import { loadDemoData } from './db/demo'`
+- Constants and enums are defined in `src/db/constants.js`:
+  - `PAYMENT_STATUS`, `CONTRIBUTION_TYPE`, `RECEIPT_STATUS`, `TRANSACTION_TYPE`
+- All database functions include JSDoc type annotations
+- Error messages are standardized in `constants.js`

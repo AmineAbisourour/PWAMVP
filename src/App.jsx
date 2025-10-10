@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { getAllHOAs, createHOA, getHOAById, loadDemoData, clearDemoData } from './db/database';
+import { getAllHOAs, createHOA, getHOAById } from './db/hoa';
+import { loadDemoData, clearDemoData } from './db/demo';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
@@ -36,18 +37,9 @@ function App() {
   useEffect(() => {
     async function checkForHOA() {
       try {
-        // 1. Check connectivity
-        const isOnline = navigator.onLine;
-        console.log('Connectivity status:', isOnline ? 'Online' : 'Offline');
-
-        // 2. If online, service worker update check is triggered automatically via onRegistered
-        // The service worker will update in the background
-
-        // 3. Check database for NON-DEMO HOAs only (user-created data)
+        // Check database for NON-DEMO HOAs only (user-created data)
         const allHOAs = await getAllHOAs();
         const userCreatedHOAs = allHOAs.filter(hoa => !hoa.isDemo);
-
-        console.log('Database check - Total HOAs:', allHOAs.length, 'User-created:', userCreatedHOAs.length);
 
         if (userCreatedHOAs.length > 0) {
           // User-created HOA exists, go to dashboard
@@ -58,8 +50,8 @@ function App() {
           // (User can create new or load demo from landing page)
           setCurrentView('landing');
         }
-      } catch (error) {
-        console.error('Error checking for HOA:', error);
+      } catch {
+        // Silently handle error and show landing page
         setCurrentView('landing');
       } finally {
         // Remove HTML splash screen after all checks complete
@@ -90,8 +82,7 @@ function App() {
       const newHOA = await getHOAById(id);
       setCurrentHOA(newHOA);
       setCurrentView('dashboard');
-    } catch (error) {
-      console.error('Error creating HOA:', error);
+    } catch {
       alert('Failed to create HOA. Please try again.');
     }
   };
@@ -122,8 +113,7 @@ function App() {
       const demoHOA = await getHOAById(id);
       setCurrentHOA(demoHOA);
       setCurrentView('dashboard');
-    } catch (error) {
-      console.error('Error loading demo data:', error);
+    } catch {
       alert('Failed to load demo data. Please try again.');
     }
   };
@@ -133,8 +123,7 @@ function App() {
       await clearDemoData();
       setCurrentHOA(null);
       setCurrentView('landing');
-    } catch (error) {
-      console.error('Error exiting demo mode:', error);
+    } catch {
       alert('Failed to exit demo mode. Please try again.');
     }
   };

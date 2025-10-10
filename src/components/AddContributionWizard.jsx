@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCurrencySymbol } from '../utils/currency';
 import { getCurrencyForCountry } from '../utils/countries';
-import { calculateContributionAmount } from '../db/database';
+import { calculateContributionAmount } from '../db/contributions';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

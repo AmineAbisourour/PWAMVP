@@ -1,16 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  getAllTransactions,
-  getContributionsByHOA,
-  getExpensesByHOA,
-  addContribution,
-  addExpense,
-  updateContribution,
-  updateExpense,
-  deleteContribution,
-  deleteExpense,
-  getFinancialSummary,
-} from '../db/database';
+import { getAllTransactions } from '../db/transactions';
+import { getContributionsByHOA, addContribution, updateContribution, deleteContribution } from '../db/contributions';
+import { getExpensesByHOA, addExpense, updateExpense, deleteExpense } from '../db/expenses';
+import { getFinancialSummary } from '../db/financials';
 
 /**
  * Unified hook for managing all transaction operations
@@ -53,7 +45,6 @@ export function useTransactions(hoaId) {
       setExpenses(exps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       setFinancialSummary(summary);
     } catch (err) {
-      console.error('Error loading transactions:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -73,7 +64,6 @@ export function useTransactions(hoaId) {
         await addContribution({ ...contributionData, hoaId });
         await loadTransactions();
       } catch (err) {
-        console.error('Error adding contribution:', err);
         setError(err.message);
         throw err;
       }
@@ -89,7 +79,6 @@ export function useTransactions(hoaId) {
         await addExpense({ ...expenseData, hoaId });
         await loadTransactions();
       } catch (err) {
-        console.error('Error adding expense:', err);
         setError(err.message);
         throw err;
       }
@@ -119,7 +108,6 @@ export function useTransactions(hoaId) {
         const summary = await getFinancialSummary(hoaId);
         setFinancialSummary(summary);
       } catch (err) {
-        console.error('Error updating contribution:', err);
         setError(err.message);
         // On error, reload everything to revert optimistic changes
         await loadTransactions();
@@ -151,7 +139,6 @@ export function useTransactions(hoaId) {
         const summary = await getFinancialSummary(hoaId);
         setFinancialSummary(summary);
       } catch (err) {
-        console.error('Error updating expense:', err);
         setError(err.message);
         // On error, reload everything to revert optimistic changes
         await loadTransactions();
@@ -169,7 +156,6 @@ export function useTransactions(hoaId) {
         await deleteContribution(contributionId);
         await loadTransactions();
       } catch (err) {
-        console.error('Error deleting contribution:', err);
         setError(err.message);
         throw err;
       }
@@ -185,7 +171,6 @@ export function useTransactions(hoaId) {
         await deleteExpense(expenseId);
         await loadTransactions();
       } catch (err) {
-        console.error('Error deleting expense:', err);
         setError(err.message);
         throw err;
       }

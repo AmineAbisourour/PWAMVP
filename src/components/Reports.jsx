@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  getFinancialSummary,
-  getAllTransactions,
-} from "../db/database";
+import { getFinancialSummary } from "../db/financials";
+import { getAllTransactions } from "../db/transactions";
 import { formatCurrency } from "../utils/currency";
 import { getCurrencyForCountry, getLocaleForCountry } from "../utils/countries";
 
@@ -28,8 +26,8 @@ export function Reports({ hoa }) {
       const transactions = await getAllTransactions(hoa.id);
       const breakdown = calculateMonthlyBreakdown(transactions);
       setMonthlyBreakdown(breakdown);
-    } catch (error) {
-      console.error("Error loading reports:", error);
+    } catch {
+      // Silently handle error
     } finally {
       setLoading(false);
     }

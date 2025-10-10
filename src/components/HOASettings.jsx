@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { updateHOA, getHOAById, clearAllTransactions, clearAllData, getFinancialSummary, addContributionRateChange, updateContributionRateChange, deleteContributionRateChange } from '../db/database';
+import { updateHOA, getHOAById } from '../db/hoa';
+import { addContributionRateChange, deleteContributionRateChange } from '../db/contributions';
+import { getFinancialSummary } from '../db/financials';
+import { clearAllTransactions } from '../db/transactions';
+import { clearAllData } from '../db/demo';
 import { getCurrencySymbol } from '../utils/currency';
 import { getCurrencyForCountry, getCountriesSorted } from '../utils/countries';
 
@@ -61,8 +65,8 @@ export function HOASettings({ hoa, onUpdate }) {
     try {
       const summary = await getFinancialSummary(hoa.id);
       setFinancialSummary(summary);
-    } catch (error) {
-      console.error('Error loading financial summary:', error);
+    } catch {
+      // Silently handle error
     }
   };
 
@@ -131,8 +135,7 @@ export function HOASettings({ hoa, onUpdate }) {
 
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
-      } catch (error) {
-        console.error('Error updating HOA:', error);
+      } catch {
         alert('Failed to update HOA settings. Please try again.');
       } finally {
         setSaving(false);
@@ -147,8 +150,7 @@ export function HOASettings({ hoa, onUpdate }) {
       await loadFinancialSummary();
       setShowDeleteTransactionsConfirm(false);
       alert('All transactions have been deleted successfully.');
-    } catch (error) {
-      console.error('Error deleting transactions:', error);
+    } catch {
       alert('Failed to delete transactions. Please try again.');
     } finally {
       setDeleting(false);
@@ -162,7 +164,6 @@ export function HOASettings({ hoa, onUpdate }) {
       // Reload the page to reset the app state
       window.location.reload();
     } catch (error) {
-      console.error('Error resetting app:', error);
       alert('Failed to reset app. Please try again.');
       setDeleting(false);
     }
@@ -201,7 +202,6 @@ export function HOASettings({ hoa, onUpdate }) {
       setShowAddRateDialog(false);
       alert('Rate change added successfully!');
     } catch (error) {
-      console.error('Error adding rate change:', error);
       alert(error.message || 'Failed to add rate change. Please try again.');
     }
   };
@@ -220,7 +220,6 @@ export function HOASettings({ hoa, onUpdate }) {
 
       alert('Rate change deleted successfully!');
     } catch (error) {
-      console.error('Error deleting rate change:', error);
       alert(error.message || 'Failed to delete rate change. Please try again.');
     }
   };

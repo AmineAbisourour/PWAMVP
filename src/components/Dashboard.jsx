@@ -3,7 +3,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { AddContributionWizard } from './AddContributionWizard';
 import { AddExpenseForm } from './AddExpenseForm';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
-import { addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/database';
+import { addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/contributions';
 import { formatCurrency } from '../utils/currency';
 import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
@@ -47,8 +47,8 @@ export function Dashboard({ hoa, onViewAllTransactions, onViewWorkflow, onExitDe
     try {
       const data = await getSpecialAssessmentsByPurpose(hoa.id);
       setSpecialAssessments(data);
-    } catch (error) {
-      console.error('Error loading special assessments:', error);
+    } catch {
+      // Silently handle error
     }
   };
 
@@ -148,8 +148,7 @@ export function Dashboard({ hoa, onViewAllTransactions, onViewWorkflow, onExitDe
       setShowSpecialAssessmentForm(false);
       loadSpecialAssessments();
       refresh();
-    } catch (error) {
-      console.error('Error creating special assessment:', error);
+    } catch {
       alert('Failed to create special assessment. Please try again.');
     }
   };

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTransactions } from "../hooks/useTransactions";
-import { bulkUpdateReceiptWorkflowStatus } from "../db/database";
+import { bulkUpdateReceiptWorkflowStatus } from "../db/bulk";
 import { formatCurrency } from "../utils/currency";
 import { getCurrencyForCountry, getLocaleForCountry } from "../utils/countries";
 

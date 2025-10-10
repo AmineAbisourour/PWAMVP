@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSpecialAssessmentsByPurpose, updateContribution } from '../db/database';
+import { getSpecialAssessmentsByPurpose, updateContribution, addBulkSpecialAssessment } from '../db/contributions';
 import { AddSpecialAssessmentForm } from './AddSpecialAssessmentForm';
-import { addBulkSpecialAssessment } from '../db/database';
 import { formatCurrency } from '../utils/currency';
 import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
@@ -22,8 +21,8 @@ export function SpecialAssessmentsPage({ hoa }) {
       setLoading(true);
       const data = await getSpecialAssessmentsByPurpose(hoa.id);
       setAssessments(data);
-    } catch (error) {
-      console.error('Error loading special assessments:', error);
+    } catch {
+      // Silently handle error
     } finally {
       setLoading(false);
     }
@@ -63,7 +62,6 @@ export function SpecialAssessmentsPage({ hoa }) {
     try {
       await updateContribution(assessmentId, { paymentStatus: newStatus });
     } catch (error) {
-      console.error('Error updating payment status:', error);
       // Revert on error
       await loadAssessments();
       alert('Failed to update payment status. Please try again.');
@@ -75,8 +73,7 @@ export function SpecialAssessmentsPage({ hoa }) {
       await addBulkSpecialAssessment(data);
       setShowCreateForm(false);
       await loadAssessments();
-    } catch (error) {
-      console.error('Error creating special assessment:', error);
+    } catch {
       alert('Failed to create special assessment. Please try again.');
     }
   };
