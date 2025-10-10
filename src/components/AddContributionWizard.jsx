@@ -1,11 +1,43 @@
 import { useState, useEffect } from 'react';
 import { getCurrencySymbol } from '../utils/currency';
 import { getCurrencyForCountry } from '../utils/countries';
+import { calculateContributionAmount } from '../db/database';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
+
+// Helper function: Compare two dates
+const compareDates = (date1, date2) => {
+  if (date1.year !== date2.year) {
+    return date1.year - date2.year;
+  }
+  return date1.month - date2.month;
+};
+
+// Helper function: Check if two dates are the same
+const isSameDate = (date1, date2) => {
+  return date1.year === date2.year && date1.month === date2.month;
+};
+
+// Helper function: Calculate all months between two dates (inclusive)
+const calculateMonthRange = (start, end) => {
+  const months = [];
+  let current = { year: start.year, month: start.month };
+
+  while (current.year < end.year || (current.year === end.year && current.month <= end.month)) {
+    months.push({ year: current.year, month: current.month });
+
+    current.month++;
+    if (current.month > 11) {  // Month is 0-indexed (0-11)
+      current.month = 0;
+      current.year++;
+    }
+  }
+
+  return months;
+};
 
 export function AddContributionWizard({ hoa, onCancel, onCreate }) {
   const currency = getCurrencyForCountry(hoa.country);
@@ -15,20 +47,25 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
   const [step, setStep] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [selectedMonths, setSelectedMonths] = useState([]);
-  const [firstClickMonth, setFirstClickMonth] = useState(null);
+  const [firstClickDate, setFirstClickDate] = useState(null); // {year, month}
+  const [lastClickDate, setLastClickDate] = useState(null); // {year, month}
+  const [selectedMonthsRange, setSelectedMonthsRange] = useState([]); // Array of {year, month}
   const [amount, setAmount] = useState(0);
+  const [rateBreakdown, setRateBreakdown] = useState(null); // Breakdown when multiple rates apply
   const [paymentStatus, setPaymentStatus] = useState('pending');
   const [receiptDelivered, setReceiptDelivered] = useState(false);
 
-  // Calculate amount based on selected months
+  // Calculate amount based on selected months range with rate history
   useEffect(() => {
-    if (selectedMonths.length > 0) {
-      setAmount(hoa.monthlyContribution * selectedMonths.length);
+    if (selectedMonthsRange.length > 0) {
+      const calculation = calculateContributionAmount(hoa, selectedMonthsRange);
+      setAmount(calculation.totalAmount);
+      setRateBreakdown(calculation.hasMultipleRates ? calculation.breakdown : null);
     } else {
       setAmount(0);
+      setRateBreakdown(null);
     }
-  }, [selectedMonths, hoa.monthlyContribution]);
+  }, [selectedMonthsRange, hoa]);
 
   // Generate unit numbers
   const unitNumbers = Array.from({ length: hoa.numberOfUnits }, (_, i) => i + 1);
@@ -39,54 +76,64 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
     setStep(2);
   };
 
-  // Handle month click with smart selection logic
+  // Handle month click with multi-year range selection
   const handleMonthClick = (monthIndex) => {
-    if (firstClickMonth === null) {
-      // First click: Select single month
-      setFirstClickMonth(monthIndex);
-      setSelectedMonths([monthIndex]);
-    } else if (firstClickMonth === monthIndex) {
-      // Clicking same month: Clear selection
-      setFirstClickMonth(null);
-      setSelectedMonths([]);
-    } else if (selectedMonths.length === 1 && selectedMonths[0] === firstClickMonth) {
-      // Second click on different month: Create range
-      const start = Math.min(firstClickMonth, monthIndex);
-      const end = Math.max(firstClickMonth, monthIndex);
-      const range = [];
-      for (let i = start; i <= end; i++) {
-        range.push(i);
-      }
-      setSelectedMonths(range);
+    const clickedDate = { year: selectedYear, month: monthIndex };
+
+    if (!firstClickDate) {
+      // FIRST CLICK: Set start date
+      setFirstClickDate(clickedDate);
+      setLastClickDate(null);
+      setSelectedMonthsRange([clickedDate]);
+    } else if (isSameDate(firstClickDate, clickedDate)) {
+      // CLICKED SAME MONTH: Clear selection
+      setFirstClickDate(null);
+      setLastClickDate(null);
+      setSelectedMonthsRange([]);
+    } else if (!lastClickDate) {
+      // SECOND CLICK: Set end date and calculate range
+      // Ensure start is before end (auto-swap if needed)
+      const start = compareDates(firstClickDate, clickedDate) <= 0
+        ? firstClickDate
+        : clickedDate;
+      const end = compareDates(firstClickDate, clickedDate) <= 0
+        ? clickedDate
+        : firstClickDate;
+
+      setFirstClickDate(start);
+      setLastClickDate(end);
+      setSelectedMonthsRange(calculateMonthRange(start, end));
     } else {
-      // Third click (range already selected): Clear and start fresh
-      setFirstClickMonth(monthIndex);
-      setSelectedMonths([monthIndex]);
+      // THIRD CLICK: Reset and start fresh
+      setFirstClickDate(clickedDate);
+      setLastClickDate(null);
+      setSelectedMonthsRange([clickedDate]);
     }
   };
 
-  // Handle year navigation
+  // Handle year navigation - selection now persists!
   const handlePreviousYear = () => {
     setSelectedYear(selectedYear - 1);
-    setFirstClickMonth(null);
-    setSelectedMonths([]);
+    // Keep firstClickDate, lastClickDate, and selectedMonthsRange
   };
 
   const handleNextYear = () => {
     setSelectedYear(selectedYear + 1);
-    setFirstClickMonth(null);
-    setSelectedMonths([]);
+    // Keep firstClickDate, lastClickDate, and selectedMonthsRange
   };
 
   // Handle form submission
   const handleSubmit = () => {
-    if (selectedMonths.length === 0) return;
+    if (selectedMonthsRange.length === 0) return;
 
-    // Format months as YYYY-MM
-    const sortedMonths = [...selectedMonths].sort((a, b) => a - b);
-    const startMonth = `${selectedYear}-${String(sortedMonths[0] + 1).padStart(2, '0')}`;
-    const endMonth = sortedMonths.length > 1
-      ? `${selectedYear}-${String(sortedMonths[sortedMonths.length - 1] + 1).padStart(2, '0')}`
+    // Get first and last dates from the range
+    const startDate = selectedMonthsRange[0];
+    const endDate = selectedMonthsRange[selectedMonthsRange.length - 1];
+
+    // Format as YYYY-MM
+    const startMonth = `${startDate.year}-${String(startDate.month + 1).padStart(2, '0')}`;
+    const endMonth = selectedMonthsRange.length > 1
+      ? `${endDate.year}-${String(endDate.month + 1).padStart(2, '0')}`
       : null;
 
     onCreate({
@@ -99,18 +146,34 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
     });
   };
 
-  // Check if month is selected
-  const isMonthSelected = (monthIndex) => selectedMonths.includes(monthIndex);
+  // Check if a month in the current viewing year is selected
+  const isMonthSelected = (monthIndex) => {
+    return selectedMonthsRange.some(
+      date => date.month === monthIndex && date.year === selectedYear
+    );
+  };
 
-  // Check if month is first click
-  const isFirstClick = (monthIndex) => firstClickMonth === monthIndex && selectedMonths.length === 1;
+  // Check if month is the first click in the current viewing year
+  const isFirstClick = (monthIndex) => {
+    return firstClickDate &&
+      firstClickDate.month === monthIndex &&
+      firstClickDate.year === selectedYear &&
+      !lastClickDate;
+  };
 
-  // Format selected months for display
+  // Format selected months for display (with years)
   const formatSelectedMonths = () => {
-    if (selectedMonths.length === 0) return 'None';
-    if (selectedMonths.length === 1) return MONTHS[selectedMonths[0]];
-    const sorted = [...selectedMonths].sort((a, b) => a - b);
-    return `${MONTHS[sorted[0]]} - ${MONTHS[sorted[sorted.length - 1]]}`;
+    if (selectedMonthsRange.length === 0) return 'None';
+
+    if (!firstClickDate) return 'None';
+
+    if (!lastClickDate) {
+      // Single month selected
+      return `${MONTHS[firstClickDate.month]} ${firstClickDate.year}`;
+    }
+
+    // Range selected
+    return `${MONTHS[firstClickDate.month]} ${firstClickDate.year} - ${MONTHS[lastClickDate.month]} ${lastClickDate.year}`;
   };
 
   return (
@@ -166,7 +229,7 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
                 Select Month(s) for Unit {selectedUnit}
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Click once for single month, click another month to select a range, click again to reset
+                Click a start month, navigate years if needed, then click end month to create a range
               </p>
             </div>
 
@@ -212,22 +275,66 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
               ))}
             </div>
 
-            {/* Amount display */}
-            {selectedMonths.length > 0 && (
+            {/* Amount display with rate breakdown */}
+            {selectedMonthsRange.length > 0 && (
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-6 border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">
-                      {selectedMonths.length} month{selectedMonths.length !== 1 ? 's' : ''} selected
+                {rateBreakdown ? (
+                  <>
+                    {/* Multiple rates detected */}
+                    <div className="mb-3 pb-3 border-b border-blue-300">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-sm font-bold text-orange-800">Rate Change Detected</span>
+                      </div>
+                      <p className="text-xs text-gray-700">
+                        The selected period spans multiple contribution rates. Breakdown:
+                      </p>
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {formatSelectedMonths()} {selectedYear}
+                    <div className="space-y-2 mb-3">
+                      {rateBreakdown.map((range, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <div>
+                            <div className="font-semibold text-gray-800">
+                              {MONTHS[range.startMonth.month]} {range.startMonth.year}
+                              {range.count > 1 && ` - ${MONTHS[range.endMonth.month]} ${range.endMonth.year}`}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {range.count} month{range.count !== 1 ? 's' : ''} × {getCurrencySymbol(currency)}{range.rate.toFixed(2)}
+                            </div>
+                          </div>
+                          <div className="font-bold text-gray-900">
+                            {getCurrencySymbol(currency)}{range.subtotal.toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-900">
-                    {getCurrencySymbol(currency)}{amount.toFixed(2)}
-                  </div>
-                </div>
+                    <div className="pt-3 border-t border-blue-300 flex items-center justify-between">
+                      <div className="text-sm font-bold text-gray-800">Total Amount</div>
+                      <div className="text-2xl font-bold text-blue-900">
+                        {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Single rate */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-gray-700 font-medium">
+                          {selectedMonthsRange.length} month{selectedMonthsRange.length !== 1 ? 's' : ''} selected
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {formatSelectedMonths()}
+                        </div>
+                      </div>
+                      <div className="text-2xl font-bold text-blue-900">
+                        {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -241,7 +348,7 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
               </button>
               <button
                 onClick={() => setStep(3)}
-                disabled={selectedMonths.length === 0}
+                disabled={selectedMonthsRange.length === 0}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
@@ -265,13 +372,13 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700 font-medium">Period</span>
                   <span className="text-gray-900 font-semibold">
-                    {formatSelectedMonths()} {selectedYear}
+                    {formatSelectedMonths()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700 font-medium">Months</span>
                   <span className="text-gray-900 font-semibold">
-                    {selectedMonths.length} month{selectedMonths.length !== 1 ? 's' : ''}
+                    {selectedMonthsRange.length} month{selectedMonthsRange.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="pt-4 border-t border-green-300 flex justify-between items-center">
@@ -282,6 +389,36 @@ export function AddContributionWizard({ hoa, onCancel, onCreate }) {
                 </div>
               </div>
             </div>
+
+            {/* Rate breakdown if multiple rates */}
+            {rateBreakdown && (
+              <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-bold text-blue-900">Amount Breakdown</span>
+                </div>
+                <div className="space-y-2">
+                  {rateBreakdown.map((range, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm bg-white rounded-lg p-2">
+                      <div>
+                        <div className="font-semibold text-gray-800">
+                          {MONTHS[range.startMonth.month]} {range.startMonth.year}
+                          {range.count > 1 && ` - ${MONTHS[range.endMonth.month]} ${range.endMonth.year}`}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {range.count} × {getCurrencySymbol(currency)}{range.rate.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="font-bold text-gray-900">
+                        {getCurrencySymbol(currency)}{range.subtotal.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Optional settings */}
             <div className="space-y-4 mb-6">

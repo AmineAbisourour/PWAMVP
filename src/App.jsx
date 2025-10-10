@@ -6,13 +6,14 @@ import { LandingPage } from './components/LandingPage';
 import { CreateHOAForm } from './components/CreateHOAForm';
 import { Dashboard } from './components/Dashboard';
 import { TransactionsPage } from './components/TransactionsPage';
+import { WorkflowPage } from './components/WorkflowPage';
 import { HOASettings } from './components/HOASettings';
 import { Reports } from './components/Reports';
 import { SpecialAssessmentsPage } from './components/SpecialAssessmentsPage';
 import { MainLayout } from './layouts/MainLayout';
 
 function App() {
-  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'
+  const [currentView, setCurrentView] = useState('loading'); // 'loading', 'landing', 'create', 'dashboard', 'transactions', 'workflow', 'specialAssessments', 'reports', 'settings'
   const [currentHOA, setCurrentHOA] = useState(null);
 
   // Register service worker for PWA updates
@@ -99,6 +100,10 @@ function App() {
     setCurrentView('transactions');
   };
 
+  const handleViewWorkflow = () => {
+    setCurrentView('workflow');
+  };
+
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
   };
@@ -135,7 +140,7 @@ function App() {
   };
 
   // Views that don't need sidebar
-  const isAuthView = ['dashboard', 'transactions', 'specialAssessments', 'reports', 'settings'].includes(currentView);
+  const isAuthView = ['dashboard', 'transactions', 'workflow', 'specialAssessments', 'reports', 'settings'].includes(currentView);
 
   return (
     <>
@@ -160,11 +165,20 @@ function App() {
           onUpdate={handleHOAUpdate}
         >
           {currentView === 'dashboard' && (
-            <Dashboard hoa={currentHOA} onViewAllTransactions={handleViewAllTransactions} onExitDemo={handleExitDemo} />
+            <Dashboard
+              hoa={currentHOA}
+              onViewAllTransactions={handleViewAllTransactions}
+              onViewWorkflow={handleViewWorkflow}
+              onExitDemo={handleExitDemo}
+            />
           )}
 
           {currentView === 'transactions' && (
             <TransactionsPage hoa={currentHOA} onBack={handleBackToDashboard} />
+          )}
+
+          {currentView === 'workflow' && (
+            <WorkflowPage hoa={currentHOA} onBack={handleBackToDashboard} />
           )}
 
           {currentView === 'specialAssessments' && (

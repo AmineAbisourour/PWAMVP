@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'HOA_PWA_DB';
-const DB_VERSION = 2;
+const DB_VERSION = 4; // Updated for contribution rate history
 const HOA_STORE = 'hoas';
 const CONTRIBUTIONS_STORE = 'contributions';
 const EXPENSES_STORE = 'expenses';
@@ -9,7 +9,7 @@ const EXPENSES_STORE = 'expenses';
 // Initialize the database
 export async function initDB() {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       // Create HOA object store if it doesn't exist
       if (!db.objectStoreNames.contains(HOA_STORE)) {
         const store = db.createObjectStore(HOA_STORE, {
@@ -42,6 +42,52 @@ export async function initDB() {
         expensesStore.createIndex('hoaId', 'hoaId');
         expensesStore.createIndex('type', 'type');
         expensesStore.createIndex('createdAt', 'createdAt');
+      }
+
+      // Version 3: Add receiptStatus field to existing contributions
+      if (oldVersion < 3 && db.objectStoreNames.contains(CONTRIBUTIONS_STORE)) {
+        const contributionsStore = transaction.objectStore(CONTRIBUTIONS_STORE);
+        const allContributions = contributionsStore.getAll();
+
+        allContributions.onsuccess = () => {
+          const contributions = allContributions.result;
+          contributions.forEach(contribution => {
+            // Migrate existing data: set receiptStatus based on receiptDelivered
+            let receiptStatus = 'not_printed'; // default
+
+            if (contribution.receiptDelivered === true) {
+              receiptStatus = 'delivered';
+            } else if (contribution.paymentStatus === 'paid') {
+              // If paid but not delivered, assume receipt is printed and with concierge
+              receiptStatus = 'with_concierge';
+            }
+
+            contribution.receiptStatus = receiptStatus;
+            contributionsStore.put(contribution);
+          });
+        };
+      }
+
+      // Version 4: Add contribution rate history to HOAs
+      if (oldVersion < 4 && db.objectStoreNames.contains(HOA_STORE)) {
+        const hoaStore = transaction.objectStore(HOA_STORE);
+        const allHOAs = hoaStore.getAll();
+
+        allHOAs.onsuccess = () => {
+          const hoas = allHOAs.result;
+          hoas.forEach(hoa => {
+            // Initialize rate history from current rate if not exists
+            if (!hoa.contributionRateHistory) {
+              const createdDate = hoa.createdAt ? hoa.createdAt.substring(0, 7) : new Date().toISOString().substring(0, 7);
+              hoa.contributionRateHistory = [{
+                effectiveDate: createdDate, // YYYY-MM format
+                amount: hoa.monthlyContribution || 0,
+                note: "Initial rate"
+              }];
+            }
+            hoaStore.put(hoa);
+          });
+        };
       }
     },
   });
@@ -107,6 +153,201 @@ export async function getHOACount() {
 }
 
 // ==========================================
+// CONTRIBUTION RATE HISTORY MANAGEMENT
+// ==========================================
+
+// Get rate for a specific month (YYYY-MM format)
+export function getRateForMonth(hoa, yearMonth) {
+  if (!hoa.contributionRateHistory || hoa.contributionRateHistory.length === 0) {
+    return hoa.monthlyContribution; // Fallback to current rate
+  }
+
+  // Find applicable rate (most recent rate before or on the month)
+  const applicableRates = hoa.contributionRateHistory
+    .filter(rate => rate.effectiveDate <= yearMonth)
+    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+
+  return applicableRates[0]?.amount || hoa.monthlyContribution;
+}
+
+// Calculate contribution amount with rate breakdown for a date range
+export function calculateContributionAmount(hoa, monthsRange) {
+  let totalAmount = 0;
+  const breakdown = [];
+  let currentRate = null;
+  let currentRangeStart = null;
+  let currentRangeCount = 0;
+
+  // Process each month in the range
+  for (let i = 0; i < monthsRange.length; i++) {
+    const month = monthsRange[i];
+    const yearMonth = `${month.year}-${String(month.month + 1).padStart(2, '0')}`;
+    const rateForMonth = getRateForMonth(hoa, yearMonth);
+
+    if (currentRate === rateForMonth) {
+      // Same rate, continue current range
+      currentRangeCount++;
+    } else {
+      // Rate changed, save previous range if exists
+      if (currentRate !== null) {
+        breakdown.push({
+          startMonth: currentRangeStart,
+          endMonth: monthsRange[i - 1],
+          rate: currentRate,
+          count: currentRangeCount,
+          subtotal: currentRate * currentRangeCount
+        });
+      }
+      // Start new range
+      currentRate = rateForMonth;
+      currentRangeStart = month;
+      currentRangeCount = 1;
+    }
+
+    totalAmount += rateForMonth;
+  }
+
+  // Add final range
+  if (currentRate !== null) {
+    breakdown.push({
+      startMonth: currentRangeStart,
+      endMonth: monthsRange[monthsRange.length - 1],
+      rate: currentRate,
+      count: currentRangeCount,
+      subtotal: currentRate * currentRangeCount
+    });
+  }
+
+  return {
+    totalAmount,
+    breakdown,
+    hasMultipleRates: breakdown.length > 1
+  };
+}
+
+// Add a new contribution rate change
+export async function addContributionRateChange(hoaId, rateChange) {
+  const db = await initDB();
+  const hoa = await db.get(HOA_STORE, hoaId);
+
+  if (!hoa) {
+    throw new Error(`HOA with id ${hoaId} not found`);
+  }
+
+  // Initialize rate history if it doesn't exist
+  if (!hoa.contributionRateHistory) {
+    hoa.contributionRateHistory = [];
+  }
+
+  // Validate: no duplicate effective dates
+  const existingDate = hoa.contributionRateHistory.find(
+    r => r.effectiveDate === rateChange.effectiveDate
+  );
+  if (existingDate) {
+    throw new Error(`A rate change already exists for ${rateChange.effectiveDate}`);
+  }
+
+  // Add new rate
+  hoa.contributionRateHistory.push({
+    effectiveDate: rateChange.effectiveDate,
+    amount: rateChange.amount,
+    note: rateChange.note || '',
+    createdAt: new Date().toISOString()
+  });
+
+  // Sort by effective date
+  hoa.contributionRateHistory.sort((a, b) =>
+    a.effectiveDate.localeCompare(b.effectiveDate)
+  );
+
+  // Update current rate to most recent
+  const mostRecent = hoa.contributionRateHistory[hoa.contributionRateHistory.length - 1];
+  hoa.monthlyContribution = mostRecent.amount;
+
+  hoa.updatedAt = new Date().toISOString();
+
+  await db.put(HOA_STORE, hoa);
+  return hoa;
+}
+
+// Update an existing rate change
+export async function updateContributionRateChange(hoaId, oldEffectiveDate, updates) {
+  const db = await initDB();
+  const hoa = await db.get(HOA_STORE, hoaId);
+
+  if (!hoa || !hoa.contributionRateHistory) {
+    throw new Error('Rate history not found');
+  }
+
+  const index = hoa.contributionRateHistory.findIndex(
+    r => r.effectiveDate === oldEffectiveDate
+  );
+
+  if (index === -1) {
+    throw new Error('Rate change not found');
+  }
+
+  // Prevent changing the first entry's effective date (it's locked to HOA creation)
+  if (index === 0 && updates.effectiveDate) {
+    throw new Error('Cannot change effective date of initial rate');
+  }
+
+  // Update the rate
+  hoa.contributionRateHistory[index] = {
+    ...hoa.contributionRateHistory[index],
+    ...updates,
+    updatedAt: new Date().toISOString()
+  };
+
+  // Re-sort if effective date changed
+  if (updates.effectiveDate) {
+    hoa.contributionRateHistory.sort((a, b) =>
+      a.effectiveDate.localeCompare(b.effectiveDate)
+    );
+  }
+
+  // Update current rate if this was the most recent
+  const mostRecent = hoa.contributionRateHistory[hoa.contributionRateHistory.length - 1];
+  hoa.monthlyContribution = mostRecent.amount;
+
+  hoa.updatedAt = new Date().toISOString();
+
+  await db.put(HOA_STORE, hoa);
+  return hoa;
+}
+
+// Delete a rate change
+export async function deleteContributionRateChange(hoaId, effectiveDate) {
+  const db = await initDB();
+  const hoa = await db.get(HOA_STORE, hoaId);
+
+  if (!hoa || !hoa.contributionRateHistory) {
+    throw new Error('Rate history not found');
+  }
+
+  // Don't allow deleting the first entry
+  if (hoa.contributionRateHistory[0]?.effectiveDate === effectiveDate) {
+    throw new Error('Cannot delete initial rate');
+  }
+
+  // Remove the rate
+  hoa.contributionRateHistory = hoa.contributionRateHistory.filter(
+    r => r.effectiveDate !== effectiveDate
+  );
+
+  // Update current rate to most recent
+  if (hoa.contributionRateHistory.length > 0) {
+    const mostRecent = hoa.contributionRateHistory[hoa.contributionRateHistory.length - 1];
+    hoa.monthlyContribution = mostRecent.amount;
+  }
+
+  hoa.updatedAt = new Date().toISOString();
+
+  await db.put(HOA_STORE, hoa);
+  return hoa;
+}
+
+// ==========================================
 // CONTRIBUTIONS CRUD Operations
 // ==========================================
 
@@ -119,6 +360,7 @@ export async function addContribution(contributionData) {
     purpose: contributionData.purpose || null, // Purpose/description for special assessments
     paymentStatus: contributionData.paymentStatus || 'pending',
     receiptDelivered: contributionData.receiptDelivered || false,
+    receiptStatus: contributionData.receiptStatus || 'not_printed', // 'not_printed', 'printed', 'with_concierge', 'delivered'
     createdAt: new Date().toISOString(),
   };
   return db.add(CONTRIBUTIONS_STORE, contribution);
@@ -285,6 +527,33 @@ export async function bulkUpdateReceiptStatus(contributionIds, delivered) {
   await Promise.all(updates);
 }
 
+// Bulk update receipt workflow status for contributions
+export async function bulkUpdateReceiptWorkflowStatus(contributionIds, receiptStatus) {
+  const db = await initDB();
+
+  const updates = contributionIds.map(async (id) => {
+    const contribution = await db.get(CONTRIBUTIONS_STORE, id);
+    if (contribution) {
+      const updates = {
+        receiptStatus,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Auto-update receiptDelivered when status is 'delivered'
+      if (receiptStatus === 'delivered') {
+        updates.receiptDelivered = true;
+      }
+
+      return db.put(CONTRIBUTIONS_STORE, {
+        ...contribution,
+        ...updates,
+      });
+    }
+  });
+
+  await Promise.all(updates);
+}
+
 // ==========================================
 // SPECIAL ASSESSMENTS
 // ==========================================
@@ -423,13 +692,46 @@ export async function getFinancialSummary(hoaId) {
   const totalContributions = regularTotal + specialTotal + openingBalanceAmount;
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+  // Separate by payment status for accurate cash position tracking
+  const paidContributions = contributions
+    .filter(c => c.paymentStatus === 'paid')
+    .reduce((sum, c) => sum + c.amount, 0);
+
+  const pendingContributions = contributions
+    .filter(c => c.paymentStatus !== 'paid')
+    .reduce((sum, c) => sum + c.amount, 0);
+
+  const paidExpenses = expenses
+    .filter(e => e.paymentStatus === 'paid')
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const pendingExpenses = expenses
+    .filter(e => e.paymentStatus !== 'paid')
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  // Net Balance now reflects actual cash position (paid transactions only)
+  const netBalance = (paidContributions + openingBalanceAmount) - paidExpenses;
+
+  // Projected Balance includes pending transactions
+  // Note: totalContributions already includes openingBalanceAmount, so don't add it again
+  const projectedBalance = totalContributions - totalExpenses;
+
   return {
-    // Totals
+    // Totals (all transactions regardless of payment status)
     totalContributions,
     totalExpenses,
-    netBalance: totalContributions - totalExpenses,
 
-    // Breakdown
+    // Payment status breakdown
+    paidContributions,
+    pendingContributions,
+    paidExpenses,
+    pendingExpenses,
+
+    // Balances
+    netBalance, // Actual cash position (paid only)
+    projectedBalance, // Expected position after all pending transactions complete
+
+    // Breakdown by contribution type
     regularContributions: regularTotal,
     specialAssessments: specialTotal,
     openingBalance: openingBalanceAmount,
@@ -438,6 +740,10 @@ export async function getFinancialSummary(hoaId) {
     regularContributionsCount: regularContributions.length,
     specialAssessmentsCount: specialAssessments.length,
     expensesCount: expenses.length,
+    paidContributionsCount: contributions.filter(c => c.paymentStatus === 'paid').length,
+    pendingContributionsCount: contributions.filter(c => c.paymentStatus !== 'paid').length,
+    paidExpensesCount: expenses.filter(e => e.paymentStatus === 'paid').length,
+    pendingExpensesCount: expenses.filter(e => e.paymentStatus !== 'paid').length,
 
     // Detailed arrays
     contributions,
@@ -467,6 +773,7 @@ export async function getAllTransactions(hoaId) {
     // Ensure status fields have defaults for existing records
     paymentStatus: c.paymentStatus || 'pending',
     receiptDelivered: c.receiptDelivered || false,
+    receiptStatus: c.receiptStatus || 'not_printed', // Default to not_printed for backward compatibility
     contributionType: c.contributionType || 'regular', // Default to regular for backward compatibility
     purpose: c.purpose || null,
   }));
@@ -529,20 +836,20 @@ export async function loadDemoData() {
     new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 7),     // current month
   ];
 
-  // Sample contributions (12 contributions)
+  // Sample contributions (12 contributions) with different workflow states
   const contributions = [
-    { unitNumber: 12, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
-    { unitNumber: 7, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
-    { unitNumber: 23, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: false },
-    { unitNumber: 45, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
-    { unitNumber: 8, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
-    { unitNumber: 15, startMonth: months[1], amount: 500, paymentStatus: 'paid', receiptDelivered: false, endMonth: months[2] },
-    { unitNumber: 34, startMonth: months[1], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
-    { unitNumber: 19, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: true },
-    { unitNumber: 42, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: false },
-    { unitNumber: 5, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
-    { unitNumber: 28, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
-    { unitNumber: 31, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false },
+    { unitNumber: 12, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true, receiptStatus: 'delivered' },
+    { unitNumber: 7, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: true, receiptStatus: 'delivered' },
+    { unitNumber: 23, startMonth: months[0], amount: 250, paymentStatus: 'paid', receiptDelivered: false, receiptStatus: 'with_concierge' },
+    { unitNumber: 45, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true, receiptStatus: 'delivered' },
+    { unitNumber: 8, startMonth: months[1], amount: 250, paymentStatus: 'paid', receiptDelivered: true, receiptStatus: 'delivered' },
+    { unitNumber: 15, startMonth: months[1], amount: 500, paymentStatus: 'paid', receiptDelivered: false, receiptStatus: 'with_concierge', endMonth: months[2] },
+    { unitNumber: 34, startMonth: months[1], amount: 250, paymentStatus: 'pending', receiptDelivered: false, receiptStatus: 'with_concierge' },
+    { unitNumber: 19, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: true, receiptStatus: 'delivered' },
+    { unitNumber: 42, startMonth: months[2], amount: 250, paymentStatus: 'paid', receiptDelivered: false, receiptStatus: 'printed' },
+    { unitNumber: 5, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false, receiptStatus: 'with_concierge' },
+    { unitNumber: 28, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false, receiptStatus: 'printed' },
+    { unitNumber: 31, startMonth: months[2], amount: 250, paymentStatus: 'pending', receiptDelivered: false, receiptStatus: 'not_printed' },
   ];
 
   // Sample expenses (8 expenses)

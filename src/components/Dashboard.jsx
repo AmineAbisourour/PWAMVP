@@ -7,7 +7,7 @@ import { addBulkSpecialAssessment, getSpecialAssessmentsByPurpose } from '../db/
 import { formatCurrency } from '../utils/currency';
 import { getCurrencyForCountry, getLocaleForCountry } from '../utils/countries';
 
-export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
+export function Dashboard({ hoa, onViewAllTransactions, onViewWorkflow, onExitDemo }) {
   const currency = getCurrencyForCountry(hoa.country);
   const locale = getLocaleForCountry(hoa.country);
   const {
@@ -241,139 +241,167 @@ export function Dashboard({ hoa, onViewAllTransactions, onExitDemo }) {
           <p className="text-gray-600">Here's your HOA at a glance</p>
         </div>
 
-        {/* Net Balance - Prominent */}
-        <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-xl p-8 mb-6">
-          <div className="text-blue-100 text-lg font-semibold mb-2">Net Balance</div>
-          <div className={`text-5xl md:text-6xl font-bold mb-3 ${
-            financialSummary.netBalance >= 0 ? 'text-white' : 'text-red-300'
-          }`}>
-            {loading ? '...' : formatCurrency(financialSummary.netBalance, currency, locale)}
-          </div>
-          <div className="flex items-center gap-4 text-blue-100">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="text-sm">
-                {loading ? '...' : formatCurrency(financialSummary.totalContributions, currency, locale)} Contributions
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-              <span className="text-sm">
-                {loading ? '...' : formatCurrency(financialSummary.totalExpenses, currency, locale)} Expenses
-              </span>
-            </div>
-          </div>
-          <div className={`mt-3 inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-            financialSummary.netBalance >= 0
-              ? 'bg-green-500 text-white'
-              : 'bg-red-500 text-white'
-          }`}>
-            {financialSummary.netBalance >= 0 ? 'Surplus' : 'Deficit'}
-          </div>
-        </div>
+        {/* Financial Overview */}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Collection Rate with Toggle */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-600">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-gray-700">Collection Rate</div>
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div className={`text-2xl font-bold ${
-              quickStats.collectionRate >= 90 ? 'text-green-600' :
-              quickStats.collectionRate >= 70 ? 'text-yellow-600' : 'text-red-600'
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border-t-4 border-blue-600">
+          <h3 className="text-lg font-bold text-gray-900 mb-6">FINANCIAL OVERVIEW</h3>
+
+          {/* Net Balance Header */}
+          <div className="mb-6 pb-6 border-b">
+            <div className="text-sm text-gray-600 mb-1">Net Balance (Actual Cash)</div>
+            <div className={`text-4xl md:text-5xl font-bold ${
+              financialSummary.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
-              {loading ? '...' : `${quickStats.collectionRate.toFixed(1)}%`}
-            </div>
-            <div className="flex gap-1 mt-2">
-              <button
-                onClick={() => setCollectionRateMode('monthly')}
-                className={`flex-1 px-2 py-1 text-xs font-semibold rounded transition-colors ${
-                  collectionRateMode === 'monthly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setCollectionRateMode('yearly')}
-                className={`flex-1 px-2 py-1 text-xs font-semibold rounded transition-colors ${
-                  collectionRateMode === 'yearly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Yearly
-              </button>
-              <button
-                onClick={() => setCollectionRateMode('overall')}
-                className={`flex-1 px-2 py-1 text-xs font-semibold rounded transition-colors ${
-                  collectionRateMode === 'overall'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Overall
-              </button>
+              {loading ? '...' : formatCurrency(financialSummary.netBalance, currency, locale)}
             </div>
           </div>
 
-          {/* Pending Contributions */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-gray-700">Pending Contributions</div>
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          {/* Split View: Contributions | Expenses */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+            {/* Contributions Column */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                CONTRIBUTIONS
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Paid:</span>
+                  <span className="font-semibold text-green-700 flex items-center gap-1">
+                    {loading ? '...' : formatCurrency(financialSummary.paidContributions, currency, locale)}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Pending:</span>
+                  <span className="font-semibold text-orange-600">
+                    {loading ? '...' : formatCurrency(financialSummary.pendingContributions, currency, locale)}
+                    <span className="text-xs text-gray-500 ml-1">({quickStats.pendingContributions})</span>
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${financialSummary.paidContributions + financialSummary.pendingContributions > 0
+                          ? (financialSummary.paidContributions / (financialSummary.paidContributions + financialSummary.pendingContributions)) * 100
+                          : 0}%`
+                      }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 text-right">
+                    {financialSummary.paidContributions + financialSummary.pendingContributions > 0
+                      ? `${((financialSummary.paidContributions / (financialSummary.paidContributions + financialSummary.pendingContributions)) * 100).toFixed(0)}% collected`
+                      : '0% collected'}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : quickStats.pendingContributions}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Awaiting payment
+
+            {/* Expenses Column */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+                EXPENSES
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Paid:</span>
+                  <span className="font-semibold text-green-700 flex items-center gap-1">
+                    {loading ? '...' : formatCurrency(financialSummary.paidExpenses, currency, locale)}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Pending:</span>
+                  <span className="font-semibold text-amber-600">
+                    {loading ? '...' : formatCurrency(financialSummary.pendingExpenses, currency, locale)}
+                    <span className="text-xs text-gray-500 ml-1">({quickStats.pendingExpenses})</span>
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-red-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${financialSummary.paidExpenses + financialSummary.pendingExpenses > 0
+                          ? (financialSummary.paidExpenses / (financialSummary.paidExpenses + financialSummary.pendingExpenses)) * 100
+                          : 0}%`
+                      }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 text-right">
+                    {financialSummary.paidExpenses + financialSummary.pendingExpenses > 0
+                      ? `${((financialSummary.paidExpenses / (financialSummary.paidExpenses + financialSummary.pendingExpenses)) * 100).toFixed(0)}% paid`
+                      : '0% paid'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Pending Expenses */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-gray-700">Pending Expenses</div>
-              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          {/* Projected Balance */}
+          {financialSummary.projectedBalance !== financialSummary.netBalance && (
+            <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-900">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+                <span className="font-semibold">Projected Balance:</span>
+              </div>
+              <span className="text-xl font-bold text-blue-900">
+                {loading ? '...' : formatCurrency(financialSummary.projectedBalance, currency, locale)}
+              </span>
             </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : quickStats.pendingExpenses}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Awaiting payment
-            </div>
-          </div>
-
-          {/* Outstanding Receipts */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-purple-600">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-gray-700">Outstanding Receipts</div>
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : quickStats.outstandingReceipts}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Receipts to deliver
-            </div>
-          </div>
+          )}
         </div>
+
+        {/* Workflow Quick Access - New prominent card */}
+        {quickStats.outstandingReceipts > 0 && (
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl shadow-xl p-6 mb-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold">Receipt Workflow</h3>
+                  <p className="text-blue-100 text-sm">Manage receipts & collections</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-4xl font-bold mb-1">{quickStats.outstandingReceipts}</div>
+                  <div className="text-blue-100">Receipts need attention</div>
+                </div>
+                <button
+                  onClick={onViewWorkflow}
+                  className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 active:bg-blue-100 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                >
+                  <span>Open Workflow</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
